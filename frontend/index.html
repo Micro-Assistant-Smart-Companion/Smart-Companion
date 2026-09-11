@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion — say it, break it down</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F1F3EE;
+    --surface: #FFFDF9;
+    --ink: #232520;
+    --ink-muted: #6B7268;
+    --moss: #3F6653;
+    --moss-dark: #2E4C3D;
+    --amber: #C98A2C;
+    --amber-dark: #A56F1E;
+    --line: #DADFD5;
+    --error: #B3432E;
+    --ring: rgba(201,138,44,0.28);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 80px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 600px;
+  }
+
+  .mark {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--moss-dark);
+    letter-spacing: 0.01em;
+    margin-bottom: 56px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.15;
+    margin: 0 0 12px;
+    color: var(--ink);
+    max-width: 15ch;
+  }
+
+  .sub {
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--ink-muted);
+    margin: 0 0 40px;
+    max-width: 42ch;
+  }
+
+  /* --- input line --- */
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 12px;
+    transition: border-color 0.2s ease;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--moss);
+  }
+
+  #goal {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 19px;
+    color: var(--ink);
+    line-height: 1.4;
+    padding: 6px 0;
+    min-height: 30px;
+    max-height: 160px;
+  }
+
+  #goal::placeholder { color: #9AA096; }
+
+  .mic-btn {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--amber);
+    color: #FFF9EF;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .mic-btn:hover { background: var(--amber-dark); }
+  .mic-btn:active { transform: scale(0.96); }
+  .mic-btn svg { width: 20px; height: 20px; position: relative; z-index: 1; }
+
+  .mic-btn.recording {
+    background: var(--error);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(179,67,46,0.45); }
+    70%  { box-shadow: 0 0 0 14px rgba(179,67,46,0); }
+    100% { box-shadow: 0 0 0 0 rgba(179,67,46,0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mic-btn.recording { animation: none; opacity: 0.85; }
+  }
+
+  .go-btn {
+    flex-shrink: 0;
+    height: 52px;
+    padding: 0 22px;
+    border-radius: 999px;
+    border: none;
+    background: var(--moss);
+    color: #F5F8F4;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .go-btn:hover:not(:disabled) { background: var(--moss-dark); }
+  .go-btn:disabled { background: #B7C2BA; cursor: default; }
+
+  /* --- settings disclosure --- */
+  .settings-toggle {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--ink-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 3px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0;
+  }
+  .settings-toggle:hover { color: var(--moss-dark); }
+
+  .settings {
+    display: none;
+    gap: 14px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  .settings.open { display: flex; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field label {
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .field select, .field input[type="number"] {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  /* --- status / error --- */
+  .status {
+    margin-top: 18px;
+    font-size: 14px;
+    color: var(--ink-muted);
+    min-height: 20px;
+  }
+  .status.error { color: var(--error); }
+
+  /* --- steps --- */
+  .steps {
+    margin-top: 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    padding: 16px 4px;
+    border-left: 3px solid transparent;
+    padding-left: 16px;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: rise 0.35s ease forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .step { opacity: 1; transform: none; animation: none; }
+  }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+  .step.active { border-left-color: var(--amber); }
+  .step.done { opacity: 0.55 !important; }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--line);
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+  .step.active .step-num { background: var(--moss); color: #fff; }
+  .step.done .step-num { background: var(--moss); color: #fff; }
+
+  .step-text {
+    font-size: 17px;
+    line-height: 1.55;
+    padding-top: 1px;
+  }
+
+  .continue-row {
+    margin-top: 28px;
+    display: flex;
+    justify-content: flex-start;
+  }
+  .continue-btn {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--moss-dark);
+    background: transparent;
+    border: 1.5px solid var(--moss);
+    border-radius: 999px;
+    padding: 11px 22px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .continue-btn:hover { background: var(--moss); color: #fff; }
+  .continue-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .done-note {
+    margin-top: 28px;
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: var(--moss-dark);
+  }
+
+  footer {
+    margin-top: 72px;
+    font-size: 13px;
+    color: #9AA096;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="mark">companion</div>
+
+  <h1>Say what's on your mind. We'll break it down.</h1>
+  <p class="sub">Type a goal or a question, or just talk — one small step at a time, no overwhelm.</p>
+
+  <div class="input-row">
+    <textarea id="goal" rows="1" placeholder="e.g. clean my room, or how do planes fly" aria-label="Your goal or question"></textarea>
+    <button class="mic-btn" id="micBtn" type="button" aria-label="Record your goal by voice" title="Record">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+    </button>
+    <button class="go-btn" id="goBtn" type="button">Break it down</button>
+  </div>
+
+  <button class="settings-toggle" id="settingsToggle" type="button">adjust tone &amp; step size</button>
+
+  <div class="settings" id="settings">
+    <div class="field">
+      <label for="tone">Tone</label>
+      <select id="tone">
+        <option value="encouraging" selected>Encouraging</option>
+        <option value="neutral">Neutral</option>
+        <option value="playful">Playful</option>
+        <option value="direct">Direct</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="readingLevel">Reading level</label>
+      <select id="readingLevel">
+        <option value="simple" selected>Simple</option>
+        <option value="standard">Standard</option>
+        <option value="advanced">Advanced</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="maxSteps">Steps at a time</label>
+      <input type="number" id="maxSteps" min="1" max="6" value="3">
+    </div>
+    <div class="field">
+      <label for="apiBase">API address</label>
+      <input type="text" id="apiBase" value="http://127.0.0.1:8000" style="width:190px;">
+    </div>
+  </div>
+
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <div class="steps" id="steps"></div>
+
+  <div class="continue-row" id="continueRow" style="display:none;">
+    <button class="continue-btn" id="continueBtn" type="button">Get the next steps</button>
+  </div>
+
+  <div class="done-note" id="doneNote" style="display:none;">That's everything — nicely done.</div>
+
+  <footer>Built for calmer thinking.</footer>
+</div>
+
+<script>
+  const goalEl = document.getElementById('goal');
+  const goBtn = document.getElementById('goBtn');
+  const micBtn = document.getElementById('micBtn');
+  const settingsToggle = document.getElementById('settingsToggle');
+  const settings = document.getElementById('settings');
+  const statusEl = document.getElementById('status');
+  const stepsEl = document.getElementById('steps');
+  const continueRow = document.getElementById('continueRow');
+  const continueBtn = document.getElementById('continueBtn');
+  const doneNote = document.getElementById('doneNote');
+
+  const toneEl = document.getElementById('tone');
+  const readingLevelEl = document.getElementById('readingLevel');
+  const maxStepsEl = document.getElementById('maxSteps');
+  const apiBaseEl = document.getElementById('apiBase');
+
+  let completedSteps = [];
+  let isRecording = false;
+  let mediaRecorder, chunks = [];
+
+  // grow textarea with content
+  goalEl.addEventListener('input', () => {
+    goalEl.style.height = 'auto';
+    goalEl.style.height = Math.min(goalEl.scrollHeight, 160) + 'px';
+  });
+
+  settingsToggle.addEventListener('click', () => {
+    settings.classList.toggle('open');
+  });
+
+  function setStatus(msg, isError = false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', isError);
+  }
+
+  function apiBase() {
+    return apiBaseEl.value.trim().replace(/\/+$/, '');
+  }
+
+  function renderSteps(newSteps, markPreviousDone) {
+    if (markPreviousDone) {
+      stepsEl.querySelectorAll('.step.active').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('done');
+      });
+    } else {
+      stepsEl.innerHTML = '';
+    }
+
+    newSteps.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'step active';
+      row.style.animationDelay = (i * 0.08) + 's';
+      row.innerHTML = `<div class="step-num">${s.step ?? (i + 1)}</div><div class="step-text">${escapeHtml(s.text ?? '')}</div>`;
+      stepsEl.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function requestSteps({ reset }) {
+    const goal = goalEl.value.trim();
+    if (!goal) {
+      setStatus('Type or say a goal first.', true);
+      return;
+    }
+
+    if (reset) {
+      completedSteps = [];
+      doneNote.style.display = 'none';
+      continueRow.style.display = 'none';
+    }
+
+    goBtn.disabled = true;
+    continueBtn.disabled = true;
+    setStatus(reset ? 'Thinking it through…' : 'Getting the next steps…');
+
+    try {
+      const res = await fetch(`${apiBase()}/decompose-task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          goal,
+          reading_level: readingLevelEl.value,
+          max_steps: Number(maxStepsEl.value) || 3,
+          tone: toneEl.value,
+          completed_steps: completedSteps,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+      const data = await res.json();
+
+      renderSteps(data.steps || [], !reset);
+      completedSteps = completedSteps.concat((data.steps || []).map(s => s.text));
+
+      if (data.is_final) {
+        continueRow.style.display = 'none';
+        doneNote.style.display = 'block';
+      } else {
+        continueRow.style.display = 'flex';
+        doneNote.style.display = 'none';
+      }
+      setStatus('');
+    } catch (err) {
+      setStatus("Couldn't reach the companion. Is the server running?", true);
+    } finally {
+      goBtn.disabled = false;
+      continueBtn.disabled = false;
+    }
+  }
+
+  goBtn.addEventListener('click', () => requestSteps({ reset: true }));
+  goalEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      requestSteps({ reset: true });
+    }
+  });
+  continueBtn.addEventListener('click', () => requestSteps({ reset: false }));
+
+  // --- voice input ---
+  micBtn.addEventListener('click', async () => {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = handleStop;
+        mediaRecorder.start();
+        isRecording = true;
+        micBtn.classList.add('recording');
+        setStatus('Listening…');
+      } catch (err) {
+        setStatus('Could not access the microphone.', true);
+      }
+    } else {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      setStatus('Transcribing…');
+    }
+  });
+
+  async function handleStop() {
+    const blob = new Blob(chunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('file', blob, 'recording.webm');
+
+    try {
+      const res = await fetch(`${apiBase()}/transcribe`, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('transcribe failed');
+      const data = await res.json();
+      goalEl.value = data.text || '';
+      goalEl.dispatchEvent(new Event('input'));
+      setStatus(data.text ? '' : "Didn't catch that — try again.", !data.text);
+    } catch (err) {
+      setStatus('Could not transcribe that recording.', true);
+    }
+  }
+</script>
+
+</body>
+</html>

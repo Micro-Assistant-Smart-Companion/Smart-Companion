@@ -4,4 +4,7 @@ pydantic
 spacy
 groq
 python-dotenv
- 
+python-multipart
+pyaudio
+numpy
+torch

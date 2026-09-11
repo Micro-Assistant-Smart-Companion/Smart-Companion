@@ -1,0 +1,71 @@
+<!-- test.html - minimal page to test /transcribe and /decompose-task from browser mic -->
+<!DOCTYPE html>
+<html>
+<head><title>Smart Companion - Voice Test</title></head>
+<body style="font-family: sans-serif; max-width: 500px; margin: 40px auto;">
+
+  <h2>Speak your goal</h2>
+  <button id="recordBtn">Start Recording</button>
+  <p id="status"></p>
+
+  <h3>Transcribed text:</h3>
+  <p id="transcript"></p>
+
+  <h3>Generated steps:</h3>
+  <ul id="steps"></ul>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+    let mediaRecorder, chunks = [];
+    const btn = document.getElementById("recordBtn");
+    const status = document.getElementById("status");
+
+    btn.onclick = async () => {
+      if (btn.textContent === "Start Recording") {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = handleRecordingStop;
+        mediaRecorder.start();
+        btn.textContent = "Stop Recording";
+        status.textContent = "Listening...";
+      } else {
+        mediaRecorder.stop();
+        btn.textContent = "Start Recording";
+        status.textContent = "Processing...";
+      }
+    };
+
+    async function handleRecordingStop() {
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("file", blob, "recording.webm");
+
+      // Step 1: send audio to /transcribe
+      const transcribeRes = await fetch(`${API}/transcribe`, { method: "POST", body: formData });
+      const { text } = await transcribeRes.json();
+      document.getElementById("transcript").textContent = text;
+
+      // Step 2: send transcribed text to /decompose-task
+      const decomposeRes = await fetch(`${API}/decompose-task`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: text, max_steps: 3, completed_steps: [] }),
+      });
+      const { steps } = await decomposeRes.json();
+
+      const list = document.getElementById("steps");
+      list.innerHTML = "";
+      steps.forEach(s => {
+        const li = document.createElement("li");
+        li.textContent = `${s.step}. ${s.text}`;
+        list.appendChild(li);
+      });
+
+      status.textContent = "Done.";
+    }
+  </script>
+
+</body>
+</html>
