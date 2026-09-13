@@ -6,18 +6,18 @@
 <title>Companion — say it, break it down</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #F1F3EE; --surface: #FFFDF9; --ink: #232520; --ink-muted: #6B7268;
-    --moss: #3F6653; --moss-dark: #2E4C3D; --amber: #C98A2C; --amber-dark: #A56F1E;
-    --line: #DADFD5; --error: #B3432E;
+    --bg: #15161d; --surface: #1f2130; --ink: #f2f1f7; --ink-muted: #a8a7bd;
+    --moss: #6c5ce7; --moss-dark: #5a48d1; --amber: #ff9f43; --amber-dark: #e8862c;
+    --line: #34364a; --error: #ff6b6b;
   }
   * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible', system-ui, sans-serif; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Comic Neue', 'Comic Sans MS', cursive, sans-serif; }
   body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 40px; }
   .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; height:calc(100vh - 72px); }
-  .mark { font-family:'Fraunces', serif; font-weight:600; font-size:18px; color:var(--moss-dark); margin-bottom:20px; }
+  .mark { font-family:'Comic Neue', cursive; font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
 
   /* chat feed */
   .feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-bottom:16px; }
@@ -31,16 +31,16 @@
     font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
   .msg.assistant .step-num { background: var(--moss); color:#fff; }
 
-  .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--moss-dark);
+  .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink);
     background:transparent; border:1.5px solid var(--moss); border-radius:999px; padding:8px 16px; cursor:pointer; }
   .done-btn:hover { background:var(--moss); color:#fff; }
-  .done-note { font-family:'Fraunces', serif; font-size:15px; color:var(--moss-dark); margin-top:8px; }
+  .done-note { font-family:'Comic Neue', cursive; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
 
   /* input row */
   .input-row { display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
   #goal { flex:1; border:none; background:transparent; outline:none; resize:none; font-family:inherit; font-size:16px;
     color:var(--ink); line-height:1.4; padding:8px 0; min-height:26px; max-height:120px; }
-  #goal::placeholder { color:#9AA096; }
+  #goal::placeholder { color:#6b6a80; }
   .mic-btn, .send-btn { flex-shrink:0; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .mic-btn { width:44px; height:44px; border-radius:50%; background:var(--amber); color:#FFF9EF; }
   .mic-btn:hover { background:var(--amber-dark); }
@@ -80,10 +80,10 @@
   const micBtn = document.getElementById('micBtn');
   const statusEl = document.getElementById('status');
 
-  // Chat memory - sent with every request so the assistant can answer follow-ups
   let history = [];          // [{role: "user"/"assistant", content: "..."}]
   let currentGoal = null;    // the active task's original text, used for "Done"
   let completedSteps = [];   // step texts done so far for the current task
+  let stepCounter = 0;       // running step number, continuous across "Done" batches
 
   let isRecording = false, mediaRecorder, chunks = [];
 
@@ -113,10 +113,11 @@
     const div = document.createElement('div');
     div.className = 'msg assistant';
 
-    steps.forEach((s, i) => {
+    steps.forEach((s) => {
+      stepCounter += 1; 
       const line = document.createElement('div');
       line.className = 'step-line';
-      line.innerHTML = `<span class="step-num">${s.step ?? (i + 1)}</span><span>${escapeHtml(s.text ?? '')}</span>`;
+      line.innerHTML = `<span class="step-num">${stepCounter}</span><span>${escapeHtml(s.text ?? '')}</span>`;
       div.appendChild(line);
     });
 
@@ -129,7 +130,7 @@
     } else {
       const note = document.createElement('div');
       note.className = 'done-note';
-      note.textContent = "That's everything — nicely done! 🎉";
+      note.textContent = "That's everything — nicely done!";
       div.appendChild(note);
     }
 
@@ -169,8 +170,9 @@
     addUserBubble(text);
     history.push({ role: "user", content: text });
 
-    // A fresh message starts a new "task" for Done/completed_steps purposes
+
     currentGoal = text;
+    stepCounter = 0;
     setStatus('Thinking…');
     sendBtn.disabled = true;
 
@@ -179,7 +181,9 @@
       const steps = data.steps || [];
       completedSteps = steps.map(s => s.text);
       addAssistantBubble(steps, data.is_final);
-      history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
+      if (!data.was_error) {
+        history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
+      }
       setStatus('');
     } catch (err) {
       setStatus("Couldn't reach the companion. Is the server running?", true);
@@ -188,7 +192,6 @@
     }
   }
 
-  // "Done" button on a specific assistant bubble - continues the SAME task
   async function handleDone(btnEl) {
     btnEl.disabled = true;
     btnEl.textContent = "Getting the next steps…";
@@ -198,9 +201,11 @@
       const data = await callBackend(currentGoal, false);
       const newSteps = data.steps || [];
       completedSteps = completedSteps.concat(newSteps.map(s => s.text));
-      btnEl.remove(); // remove old Done button, new one added on the new bubble
+      btnEl.remove(); 
       addAssistantBubble(newSteps, data.is_final);
-      history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
+      if (!data.was_error) {
+        history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
+      }
     } catch (err) {
       setStatus("Couldn't reach the companion.", true);
       btnEl.disabled = false;
@@ -222,7 +227,36 @@
     }
   });
 
-  // --- voice input ---
+  const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let liveRecognition = null;
+
+  function startLiveCaptions() {
+    if (!LiveRecognition) return; // not supported in this browser - live captions just won't show, no error
+    liveRecognition = new LiveRecognition();
+    liveRecognition.continuous = true;
+    liveRecognition.interimResults = true;
+    liveRecognition.lang = 'en-US';
+
+    liveRecognition.onresult = (event) => {
+      let combined = '';
+      for (let i = 0; i < event.results.length; i++) {
+        combined += event.results[i][0].transcript;
+      }
+      goalEl.value = combined;
+      goalEl.dispatchEvent(new Event('input')); // keep the box auto-resizing
+    };
+
+    liveRecognition.onerror = () => {}; 
+    try { liveRecognition.start(); } catch (e) {}
+  }
+
+  function stopLiveCaptions() {
+    if (liveRecognition) {
+      try { liveRecognition.stop(); } catch (e) {}
+      liveRecognition = null;
+    }
+  }
+
   micBtn.addEventListener('click', async () => {
     if (!isRecording) {
       try {
@@ -232,6 +266,7 @@
         mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
         mediaRecorder.onstop = handleStop;
         mediaRecorder.start();
+        startLiveCaptions();
         isRecording = true;
         micBtn.classList.add('recording');
         setStatus('Listening…');
@@ -241,6 +276,7 @@
     } else {
       mediaRecorder.stop();
       mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      stopLiveCaptions();
       isRecording = false;
       micBtn.classList.remove('recording');
       setStatus('Transcribing…');
@@ -256,8 +292,14 @@
       if (!res.ok) throw new Error('transcribe failed');
       const data = await res.json();
       setStatus('');
-      if (data.text) sendMessage(data.text);
-      else setStatus("Didn't catch that — try again.", true);
+      // Replace the live-caption text with the more accurate backend transcription
+      if (data.text) {
+        goalEl.value = '';
+        goalEl.style.height = 'auto';
+        sendMessage(data.text);
+      } else {
+        setStatus("Didn't catch that — try again.", true);
+      }
     } catch (err) {
       setStatus('Could not transcribe that recording.', true);
     }

@@ -41,8 +41,6 @@ def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
 
     history_block = ""
     if history:
-        # Only the last 4 turns are sent - older context adds latency without much benefit
-        # for follow-up questions, which are almost always about the most recent reply.
         turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
         history_block = f"""Conversation so far:
 {turns}
@@ -56,20 +54,22 @@ step numbering purposes.
 """
 
     if completed_steps:
-        # Only show the last 5 completed steps in full - summarize anything older as a
-        # count. This keeps the prompt (and response time) from growing without limit
-        # on long, many-step tasks.
         RECENT_LIMIT = 5
         recent = completed_steps[-RECENT_LIMIT:]
         older_count = len(completed_steps) - len(recent)
+        total_so_far = len(completed_steps)
 
         done_text = "\n".join(f"- {s}" for s in recent)
         older_note = f"(plus {older_count} earlier steps already done)\n" if older_count > 0 else ""
 
-        progress = f"""Already completed:
+        progress = f"""Already completed ({total_so_far} steps given so far for this goal):
 {older_note}{done_text}
 
-Give the NEXT {max_steps} steps. Do not repeat completed steps or summarize the whole task."""
+Give the NEXT {max_steps} steps, continuing forward from here.
+NEVER restart the task from the beginning or repeat earlier stages already listed above.
+If this is a finite task (like a recipe, a single errand, or anything with a clear end point)
+and it is now naturally complete (e.g. the food is cooked and served, the task is done),
+set "is_final" to true instead of inventing more steps."""
     else:
         progress = f"Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task."
 
@@ -98,12 +98,7 @@ Input: "{goal}"
 """
 
 
-def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
-                    tone: str = "encouraging", completed_steps: list = None,
-                    history: list = None) -> dict:
-    completed_steps = completed_steps or []
-    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history)
-
+def _call_model(prompt: str):
     start = time.time()
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -111,15 +106,39 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
         max_tokens=1024,
         temperature=0.4,
     )
-    print(f"[timing] LLM response took {time.time() - start:.2f}s (history_turns={len(history or [])}, completed_steps={len(completed_steps or [])})")
-
+    elapsed = time.time() - start
     raw_text = (response.choices[0].message.content or "").strip()
+    return raw_text, elapsed
+
+
+def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
+                    tone: str = "encouraging", completed_steps: list = None,
+                    history: list = None) -> dict:
+    completed_steps = completed_steps or []
+    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history)
+
+    raw_text, elapsed = _call_model(prompt)
     parsed = extract_json(raw_text)
+    print(f"[timing] LLM response took {elapsed:.2f}s (history_turns={len(history or [])}, completed_steps={len(completed_steps)})")
+
+    if parsed is None or "steps" not in parsed:
+        print("[warning] Model did not return steps - retrying without conversation history")
+        clean_prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history=None)
+        raw_text, elapsed = _call_model(clean_prompt)
+        parsed = extract_json(raw_text)
+        print(f"[timing] Retry took {elapsed:.2f}s")
 
     if parsed is None or "steps" not in parsed:
         parsed = {
-            "steps": [{"step": 1, "text": raw_text or "Sorry, I couldn't generate a response. Please try again."}],
+            "steps": [{"step": 1, "text": "Sorry, I got a bit stuck there - could you try asking that again?"}],
             "is_final": True,
+            "was_error": True,  
         }
+
+    steps = parsed.get("steps", [])
+    if len(steps) > max_steps:
+        print(f"[warning] Model returned {len(steps)} steps, expected {max_steps} - trimming")
+        parsed["steps"] = steps[:max_steps]
+        parsed["is_final"] = False  
 
     return parsed
