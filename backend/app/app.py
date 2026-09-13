@@ -36,7 +36,7 @@ def decompose(req: TaskRequest):
         max_steps=req.max_steps,
         tone=req.tone,
         completed_steps=req.completed_steps,
-        history=[t.dict() for t in req.history],
+        history=[t.model_dump() for t in req.history],
     )
 
     return result
@@ -46,4 +46,3 @@ async def transcribe(file: UploadFile = File(...)):
     audio_bytes = await file.read()
     text = transcribe_audio_bytes(audio_bytes, filename=file.filename, content_type=file.content_type)
     return {"text": text}
- 

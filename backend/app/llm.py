@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from groq import Groq
 
 api_key = os.environ.get("GROQ_API_KEY")
@@ -40,7 +41,9 @@ def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
 
     history_block = ""
     if history:
-        turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-8:])
+        # Only the last 4 turns are sent - older context adds latency without much benefit
+        # for follow-up questions, which are almost always about the most recent reply.
+        turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
         history_block = f"""Conversation so far:
 {turns}
 
@@ -53,17 +56,27 @@ step numbering purposes.
 """
 
     if completed_steps:
-        done_text = "\n".join(f"- {s}" for s in completed_steps)
+        # Only show the last 5 completed steps in full - summarize anything older as a
+        # count. This keeps the prompt (and response time) from growing without limit
+        # on long, many-step tasks.
+        RECENT_LIMIT = 5
+        recent = completed_steps[-RECENT_LIMIT:]
+        older_count = len(completed_steps) - len(recent)
+
+        done_text = "\n".join(f"- {s}" for s in recent)
+        older_note = f"(plus {older_count} earlier steps already done)\n" if older_count > 0 else ""
+
         progress = f"""Already completed:
-{done_text}
+{older_note}{done_text}
 
 Give the NEXT {max_steps} steps. Do not repeat completed steps or summarize the whole task."""
     else:
         progress = f"Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task."
 
-    return f"""{history_block}You are an assistant for all kinds of users, especially neurodivergent users. The input below may be
-either an ACTION goal (something to do and something to solve), a QUESTION (something to know), or a
-FOLLOW-UP about something already discussed above.
+    return f"""{history_block}You are a warm, friendly companion for all kinds of users, especially neurodivergent users.
+Talk like a supportive friend, not a manual - encouraging, patient, never robotic or curt.
+The input below may be either an ACTION goal (something to do and something to solve),
+a QUESTION (something to know), or a FOLLOW-UP about something already discussed above.
 
 - If it is an ACTION goal (e.g. "clean my room", "how to book a flight", "write a poem", "solve the math or physics problem"):
   {progress}
@@ -91,12 +104,14 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
     completed_steps = completed_steps or []
     prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history)
 
+    start = time.time()
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1024,
         temperature=0.4,
     )
+    print(f"[timing] LLM response took {time.time() - start:.2f}s (history_turns={len(history or [])}, completed_steps={len(completed_steps or [])})")
 
     raw_text = (response.choices[0].message.content or "").strip()
     parsed = extract_json(raw_text)

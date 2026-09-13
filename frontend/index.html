@@ -9,379 +9,87 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #F1F3EE;
-    --surface: #FFFDF9;
-    --ink: #232520;
-    --ink-muted: #6B7268;
-    --moss: #3F6653;
-    --moss-dark: #2E4C3D;
-    --amber: #C98A2C;
-    --amber-dark: #A56F1E;
-    --line: #DADFD5;
-    --error: #B3432E;
-    --ring: rgba(201,138,44,0.28);
+    --bg: #F1F3EE; --surface: #FFFDF9; --ink: #232520; --ink-muted: #6B7268;
+    --moss: #3F6653; --moss-dark: #2E4C3D; --amber: #C98A2C; --amber-dark: #A56F1E;
+    --line: #DADFD5; --error: #B3432E;
   }
-
   * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible', system-ui, sans-serif; }
+  body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 40px; }
+  .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; height:calc(100vh - 72px); }
+  .mark { font-family:'Fraunces', serif; font-weight:600; font-size:18px; color:var(--moss-dark); margin-bottom:20px; }
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
-  }
+  /* chat feed */
+  .feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-bottom:16px; }
+  .msg { max-width:85%; padding:14px 16px; border-radius:14px; line-height:1.55; font-size:16px; animation: rise 0.25s ease; }
+  @keyframes rise { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .msg.user { align-self:flex-end; background:var(--moss); color:#F5F8F4; border-bottom-right-radius:3px; }
+  .msg.assistant { align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:3px; }
+  .msg .step-line { display:flex; gap:10px; margin-bottom:6px; }
+  .msg .step-line:last-child { margin-bottom:0; }
+  .step-num { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--line); color:var(--ink-muted);
+    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .msg.assistant .step-num { background: var(--moss); color:#fff; }
 
-  body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 48px 24px 80px;
-  }
+  .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--moss-dark);
+    background:transparent; border:1.5px solid var(--moss); border-radius:999px; padding:8px 16px; cursor:pointer; }
+  .done-btn:hover { background:var(--moss); color:#fff; }
+  .done-note { font-family:'Fraunces', serif; font-size:15px; color:var(--moss-dark); margin-top:8px; }
 
-  .wrap {
-    width: 100%;
-    max-width: 600px;
-  }
+  /* input row */
+  .input-row { display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
+  #goal { flex:1; border:none; background:transparent; outline:none; resize:none; font-family:inherit; font-size:16px;
+    color:var(--ink); line-height:1.4; padding:8px 0; min-height:26px; max-height:120px; }
+  #goal::placeholder { color:#9AA096; }
+  .mic-btn, .send-btn { flex-shrink:0; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mic-btn { width:44px; height:44px; border-radius:50%; background:var(--amber); color:#FFF9EF; }
+  .mic-btn:hover { background:var(--amber-dark); }
+  .mic-btn.recording { background:var(--error); animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(179,67,46,0.45);} 70%{box-shadow:0 0 0 12px rgba(179,67,46,0);} 100%{box-shadow:0 0 0 0 rgba(179,67,46,0);} }
+  .send-btn { height:44px; padding:0 18px; border-radius:999px; background:var(--moss); color:#F5F8F4; font-family:inherit; font-size:14px; font-weight:700; }
+  .send-btn:hover:not(:disabled) { background:var(--moss-dark); }
+  .send-btn:disabled { background:#B7C2BA; cursor:default; }
+  .mic-btn svg { width:18px; height:18px; }
 
-  .mark {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 18px;
-    color: var(--moss-dark);
-    letter-spacing: 0.01em;
-    margin-bottom: 56px;
-  }
-
-  h1 {
-    font-family: 'Fraunces', serif;
-    font-optical-sizing: auto;
-    font-weight: 600;
-    font-size: clamp(30px, 5vw, 42px);
-    line-height: 1.15;
-    margin: 0 0 12px;
-    color: var(--ink);
-    max-width: 15ch;
-  }
-
-  .sub {
-    font-size: 17px;
-    line-height: 1.55;
-    color: var(--ink-muted);
-    margin: 0 0 40px;
-    max-width: 42ch;
-  }
-
-  /* --- input line --- */
-  .input-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
-    border-bottom: 2px solid var(--line);
-    padding-bottom: 12px;
-    transition: border-color 0.2s ease;
-  }
-
-  .input-row:focus-within {
-    border-color: var(--moss);
-  }
-
-  #goal {
-    flex: 1;
-    border: none;
-    background: transparent;
-    outline: none;
-    resize: none;
-    font-family: inherit;
-    font-size: 19px;
-    color: var(--ink);
-    line-height: 1.4;
-    padding: 6px 0;
-    min-height: 30px;
-    max-height: 160px;
-  }
-
-  #goal::placeholder { color: #9AA096; }
-
-  .mic-btn {
-    flex-shrink: 0;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: none;
-    background: var(--amber);
-    color: #FFF9EF;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    transition: background 0.15s ease, transform 0.1s ease;
-  }
-  .mic-btn:hover { background: var(--amber-dark); }
-  .mic-btn:active { transform: scale(0.96); }
-  .mic-btn svg { width: 20px; height: 20px; position: relative; z-index: 1; }
-
-  .mic-btn.recording {
-    background: var(--error);
-    animation: pulse 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(179,67,46,0.45); }
-    70%  { box-shadow: 0 0 0 14px rgba(179,67,46,0); }
-    100% { box-shadow: 0 0 0 0 rgba(179,67,46,0); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .mic-btn.recording { animation: none; opacity: 0.85; }
-  }
-
-  .go-btn {
-    flex-shrink: 0;
-    height: 52px;
-    padding: 0 22px;
-    border-radius: 999px;
-    border: none;
-    background: var(--moss);
-    color: #F5F8F4;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-  .go-btn:hover:not(:disabled) { background: var(--moss-dark); }
-  .go-btn:disabled { background: #B7C2BA; cursor: default; }
-
-  /* --- settings disclosure --- */
-  .settings-toggle {
-    display: inline-block;
-    margin-top: 16px;
-    font-size: 14px;
-    color: var(--ink-muted);
-    text-decoration: underline;
-    text-decoration-color: var(--line);
-    text-underline-offset: 3px;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-family: inherit;
-    padding: 0;
-  }
-  .settings-toggle:hover { color: var(--moss-dark); }
-
-  .settings {
-    display: none;
-    gap: 14px;
-    margin-top: 18px;
-    flex-wrap: wrap;
-  }
-  .settings.open { display: flex; }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .field label {
-    font-size: 12px;
-    color: var(--ink-muted);
-  }
-  .field select, .field input[type="number"] {
-    font-family: inherit;
-    font-size: 14px;
-    padding: 7px 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--ink);
-  }
-
-  /* --- status / error --- */
-  .status {
-    margin-top: 18px;
-    font-size: 14px;
-    color: var(--ink-muted);
-    min-height: 20px;
-  }
-  .status.error { color: var(--error); }
-
-  /* --- steps --- */
-  .steps {
-    margin-top: 44px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .step {
-    display: flex;
-    gap: 16px;
-    padding: 16px 4px;
-    border-left: 3px solid transparent;
-    padding-left: 16px;
-    opacity: 0;
-    transform: translateY(6px);
-    animation: rise 0.35s ease forwards;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .step { opacity: 1; transform: none; animation: none; }
-  }
-  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
-
-  .step.active { border-left-color: var(--amber); }
-  .step.done { opacity: 0.55 !important; }
-
-  .step-num {
-    flex-shrink: 0;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--line);
-    color: var(--ink-muted);
-    margin-top: 2px;
-  }
-  .step.active .step-num { background: var(--moss); color: #fff; }
-  .step.done .step-num { background: var(--moss); color: #fff; }
-
-  .step-text {
-    font-size: 17px;
-    line-height: 1.55;
-    padding-top: 1px;
-  }
-
-  .continue-row {
-    margin-top: 28px;
-    display: flex;
-    justify-content: flex-start;
-  }
-  .continue-btn {
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--moss-dark);
-    background: transparent;
-    border: 1.5px solid var(--moss);
-    border-radius: 999px;
-    padding: 11px 22px;
-    cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-  .continue-btn:hover { background: var(--moss); color: #fff; }
-  .continue-btn:disabled { opacity: 0.5; cursor: default; }
-
-  .done-note {
-    margin-top: 28px;
-    font-family: 'Fraunces', serif;
-    font-size: 18px;
-    color: var(--moss-dark);
-  }
-
-  footer {
-    margin-top: 72px;
-    font-size: 13px;
-    color: #9AA096;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--moss);
-    outline-offset: 2px;
-  }
+  .status { font-size:13px; color:var(--ink-muted); min-height:18px; margin-bottom:4px; }
+  .status.error { color:var(--error); }
 </style>
 </head>
 <body>
-
 <div class="wrap">
   <div class="mark">companion</div>
-
-  <h1>Say what's on your mind. We'll break it down.</h1>
-  <p class="sub">Type a goal or a question, or just talk — one small step at a time, no overwhelm.</p>
-
-  <div class="input-row">
-    <textarea id="goal" rows="1" placeholder="e.g. clean my room, or how do planes fly" aria-label="Your goal or question"></textarea>
-    <button class="mic-btn" id="micBtn" type="button" aria-label="Record your goal by voice" title="Record">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-    </button>
-    <button class="go-btn" id="goBtn" type="button">Break it down</button>
+  <div class="feed" id="feed">
+    <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. 🌱</div>
   </div>
-
-  <button class="settings-toggle" id="settingsToggle" type="button">adjust tone &amp; step size</button>
-
-  <div class="settings" id="settings">
-    <div class="field">
-      <label for="tone">Tone</label>
-      <select id="tone">
-        <option value="encouraging" selected>Encouraging</option>
-        <option value="neutral">Neutral</option>
-        <option value="playful">Playful</option>
-        <option value="direct">Direct</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="readingLevel">Reading level</label>
-      <select id="readingLevel">
-        <option value="simple" selected>Simple</option>
-        <option value="standard">Standard</option>
-        <option value="advanced">Advanced</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="maxSteps">Steps at a time</label>
-      <input type="number" id="maxSteps" min="1" max="6" value="3">
-    </div>
-    <div class="field">
-      <label for="apiBase">API address</label>
-      <input type="text" id="apiBase" value="http://127.0.0.1:8000" style="width:190px;">
-    </div>
-  </div>
-
   <div class="status" id="status" role="status" aria-live="polite"></div>
-
-  <div class="steps" id="steps"></div>
-
-  <div class="continue-row" id="continueRow" style="display:none;">
-    <button class="continue-btn" id="continueBtn" type="button">Get the next steps</button>
+  <div class="input-row">
+    <textarea id="goal" rows="1" placeholder="Type or speak — e.g. how do I make biryani"></textarea>
+    <button class="mic-btn" id="micBtn" type="button" title="Record">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+    </button>
+    <button class="send-btn" id="sendBtn" type="button">Send</button>
   </div>
-
-  <div class="done-note" id="doneNote" style="display:none;">That's everything — nicely done.</div>
-
-  <footer>Built for calmer thinking.</footer>
 </div>
 
 <script>
+  const API = "http://127.0.0.1:8000";
+
+  const feedEl = document.getElementById('feed');
   const goalEl = document.getElementById('goal');
-  const goBtn = document.getElementById('goBtn');
+  const sendBtn = document.getElementById('sendBtn');
   const micBtn = document.getElementById('micBtn');
-  const settingsToggle = document.getElementById('settingsToggle');
-  const settings = document.getElementById('settings');
   const statusEl = document.getElementById('status');
-  const stepsEl = document.getElementById('steps');
-  const continueRow = document.getElementById('continueRow');
-  const continueBtn = document.getElementById('continueBtn');
-  const doneNote = document.getElementById('doneNote');
 
-  const toneEl = document.getElementById('tone');
-  const readingLevelEl = document.getElementById('readingLevel');
-  const maxStepsEl = document.getElementById('maxSteps');
-  const apiBaseEl = document.getElementById('apiBase');
+  // Chat memory - sent with every request so the assistant can answer follow-ups
+  let history = [];          // [{role: "user"/"assistant", content: "..."}]
+  let currentGoal = null;    // the active task's original text, used for "Done"
+  let completedSteps = [];   // step texts done so far for the current task
 
-  let completedSteps = [];
-  let isRecording = false;
-  let mediaRecorder, chunks = [];
+  let isRecording = false, mediaRecorder, chunks = [];
 
-  // grow textarea with content
   goalEl.addEventListener('input', () => {
     goalEl.style.height = 'auto';
-    goalEl.style.height = Math.min(goalEl.scrollHeight, 160) + 'px';
-  });
-
-  settingsToggle.addEventListener('click', () => {
-    settings.classList.toggle('open');
+    goalEl.style.height = Math.min(goalEl.scrollHeight, 120) + 'px';
   });
 
   function setStatus(msg, isError = false) {
@@ -389,95 +97,130 @@
     statusEl.classList.toggle('error', isError);
   }
 
-  function apiBase() {
-    return apiBaseEl.value.trim().replace(/\/+$/, '');
+  function scrollToBottom() {
+    feedEl.scrollTop = feedEl.scrollHeight;
   }
 
-  function renderSteps(newSteps, markPreviousDone) {
-    if (markPreviousDone) {
-      stepsEl.querySelectorAll('.step.active').forEach(el => {
-        el.classList.remove('active');
-        el.classList.add('done');
-      });
+  function addUserBubble(text) {
+    const div = document.createElement('div');
+    div.className = 'msg user';
+    div.textContent = text;
+    feedEl.appendChild(div);
+    scrollToBottom();
+  }
+
+  function addAssistantBubble(steps, isFinal, forDone) {
+    const div = document.createElement('div');
+    div.className = 'msg assistant';
+
+    steps.forEach((s, i) => {
+      const line = document.createElement('div');
+      line.className = 'step-line';
+      line.innerHTML = `<span class="step-num">${s.step ?? (i + 1)}</span><span>${escapeHtml(s.text ?? '')}</span>`;
+      div.appendChild(line);
+    });
+
+    if (!isFinal) {
+      const btn = document.createElement('button');
+      btn.className = 'done-btn';
+      btn.textContent = "Done — what's next?";
+      btn.onclick = () => handleDone(btn);
+      div.appendChild(btn);
     } else {
-      stepsEl.innerHTML = '';
+      const note = document.createElement('div');
+      note.className = 'done-note';
+      note.textContent = "That's everything — nicely done! 🎉";
+      div.appendChild(note);
     }
 
-    newSteps.forEach((s, i) => {
-      const row = document.createElement('div');
-      row.className = 'step active';
-      row.style.animationDelay = (i * 0.08) + 's';
-      row.innerHTML = `<div class="step-num">${s.step ?? (i + 1)}</div><div class="step-text">${escapeHtml(s.text ?? '')}</div>`;
-      stepsEl.appendChild(row);
-    });
+    feedEl.appendChild(div);
+    scrollToBottom();
+    return div;
   }
 
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
   }
 
-  async function requestSteps({ reset }) {
-    const goal = goalEl.value.trim();
-    if (!goal) {
-      setStatus('Type or say a goal first.', true);
-      return;
-    }
+  async function callBackend(goal, resetTask) {
+    if (resetTask) completedSteps = [];
 
-    if (reset) {
-      completedSteps = [];
-      doneNote.style.display = 'none';
-      continueRow.style.display = 'none';
-    }
+    const res = await fetch(`${API}/decompose-task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        goal,
+        reading_level: "simple",
+        max_steps: 3,
+        tone: "encouraging",
+        completed_steps: completedSteps,
+        history,
+      }),
+    });
+    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+    return res.json();
+  }
 
-    goBtn.disabled = true;
-    continueBtn.disabled = true;
-    setStatus(reset ? 'Thinking it through…' : 'Getting the next steps…');
+  // Sending a new message (typed or spoken) - could be a new goal, a question, or a follow-up
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    addUserBubble(text);
+    history.push({ role: "user", content: text });
+
+    // A fresh message starts a new "task" for Done/completed_steps purposes
+    currentGoal = text;
+    setStatus('Thinking…');
+    sendBtn.disabled = true;
 
     try {
-      const res = await fetch(`${apiBase()}/decompose-task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          goal,
-          reading_level: readingLevelEl.value,
-          max_steps: Number(maxStepsEl.value) || 3,
-          tone: toneEl.value,
-          completed_steps: completedSteps,
-        }),
-      });
-
-      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-      const data = await res.json();
-
-      renderSteps(data.steps || [], !reset);
-      completedSteps = completedSteps.concat((data.steps || []).map(s => s.text));
-
-      if (data.is_final) {
-        continueRow.style.display = 'none';
-        doneNote.style.display = 'block';
-      } else {
-        continueRow.style.display = 'flex';
-        doneNote.style.display = 'none';
-      }
+      const data = await callBackend(text, true);
+      const steps = data.steps || [];
+      completedSteps = steps.map(s => s.text);
+      addAssistantBubble(steps, data.is_final);
+      history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
       setStatus('');
     } catch (err) {
       setStatus("Couldn't reach the companion. Is the server running?", true);
     } finally {
-      goBtn.disabled = false;
-      continueBtn.disabled = false;
+      sendBtn.disabled = false;
     }
   }
 
-  goBtn.addEventListener('click', () => requestSteps({ reset: true }));
+  // "Done" button on a specific assistant bubble - continues the SAME task
+  async function handleDone(btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Getting the next steps…";
+    setStatus('');
+
+    try {
+      const data = await callBackend(currentGoal, false);
+      const newSteps = data.steps || [];
+      completedSteps = completedSteps.concat(newSteps.map(s => s.text));
+      btnEl.remove(); // remove old Done button, new one added on the new bubble
+      addAssistantBubble(newSteps, data.is_final);
+      history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
+    } catch (err) {
+      setStatus("Couldn't reach the companion.", true);
+      btnEl.disabled = false;
+      btnEl.textContent = "Done — what's next?";
+    }
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const text = goalEl.value.trim();
+    goalEl.value = '';
+    goalEl.style.height = 'auto';
+    sendMessage(text);
+  });
+
   goalEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      requestSteps({ reset: true });
+      sendBtn.click();
     }
   });
-  continueBtn.addEventListener('click', () => requestSteps({ reset: false }));
 
   // --- voice input ---
   micBtn.addEventListener('click', async () => {
@@ -508,19 +251,17 @@
     const blob = new Blob(chunks, { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', blob, 'recording.webm');
-
     try {
-      const res = await fetch(`${apiBase()}/transcribe`, { method: 'POST', body: formData });
+      const res = await fetch(`${API}/transcribe`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('transcribe failed');
       const data = await res.json();
-      goalEl.value = data.text || '';
-      goalEl.dispatchEvent(new Event('input'));
-      setStatus(data.text ? '' : "Didn't catch that — try again.", !data.text);
+      setStatus('');
+      if (data.text) sendMessage(data.text);
+      else setStatus("Didn't catch that — try again.", true);
     } catch (err) {
       setStatus('Could not transcribe that recording.', true);
     }
   }
 </script>
-
 </body>
 </html>
