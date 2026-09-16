@@ -1,5 +1,3 @@
-# models.py - request/response schemas
-
 from pydantic import BaseModel
 
 
@@ -33,3 +31,17 @@ class TaskResponse(BaseModel):
 
 class TranscribeResponse(BaseModel):
     text: str
+
+
+class DetectObjectsResponse(BaseModel):
+    summary: str
+
+
+class CaptionResponse(BaseModel):
+    headline: str
+    detail: str = ""
+
+
+class GuidanceResponse(BaseModel):
+    found: bool
+    guidance: str

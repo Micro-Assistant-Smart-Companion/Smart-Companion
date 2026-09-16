@@ -37,22 +37,62 @@
   .done-note { font-family:'Comic Neue', cursive; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
 
   /* input row */
-  .input-row { display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
+  .input-row { position:relative; display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
   #goal { flex:1; border:none; background:transparent; outline:none; resize:none; font-family:inherit; font-size:16px;
     color:var(--ink); line-height:1.4; padding:8px 0; min-height:26px; max-height:120px; }
   #goal::placeholder { color:#6b6a80; }
-  .mic-btn, .send-btn { flex-shrink:0; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .mic-btn { width:44px; height:44px; border-radius:50%; background:var(--amber); color:#FFF9EF; }
+  .mic-btn, .cam-btn, .send-btn { flex-shrink:0; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mic-btn, .cam-btn { width:44px; height:44px; border-radius:50%; background:var(--amber); color:#FFF9EF; }
+  .cam-btn { background:var(--moss); }
   .mic-btn:hover { background:var(--amber-dark); }
+  .cam-btn:hover { background:var(--moss-dark); }
   .mic-btn.recording { background:var(--error); animation:pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(179,67,46,0.45);} 70%{box-shadow:0 0 0 12px rgba(179,67,46,0);} 100%{box-shadow:0 0 0 0 rgba(179,67,46,0);} }
   .send-btn { height:44px; padding:0 18px; border-radius:999px; background:var(--moss); color:#F5F8F4; font-family:inherit; font-size:14px; font-weight:700; }
   .send-btn:hover:not(:disabled) { background:var(--moss-dark); }
   .send-btn:disabled { background:#B7C2BA; cursor:default; }
-  .mic-btn svg { width:18px; height:18px; }
+  .mic-btn svg, .cam-btn svg { width:18px; height:18px; }
+
+  .cam-menu { position:relative; }
+  .cam-menu { display:none; position:absolute; bottom:56px; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:6px; flex-direction:column; gap:4px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:10; }
+  .cam-menu.open { display:flex; }
+  .cam-menu button { font-family:inherit; font-size:14px; text-align:left; padding:8px 12px; border:none;
+    background:transparent; color:var(--ink); border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .cam-menu button:hover { background:var(--line); }
 
   .status { font-size:13px; color:var(--ink-muted); min-height:18px; margin-bottom:4px; }
   .status.error { color:var(--error); }
+
+  .attach-preview { display:none; align-items:center; gap:10px; padding:8px 10px; margin-bottom:8px;
+    background:var(--surface); border:1px solid var(--line); border-radius:10px; }
+  .attach-preview.active { display:flex; }
+  .attach-preview img { width:44px; height:44px; object-fit:cover; border-radius:8px; }
+  .attach-preview .attach-label { flex:1; font-size:13px; color:var(--ink-muted); }
+  .attach-preview .attach-remove { border:none; background:transparent; color:var(--error); font-size:18px;
+    cursor:pointer; padding:2px 8px; line-height:1; }
+
+  .msg .msg-thumb { width:100%; max-width:220px; border-radius:10px; margin-bottom:8px; display:block; }
+  .answer-headline { font-weight:700; font-size:17px; margin-bottom:6px; }
+  .answer-detail { font-size:14px; color:var(--ink-muted); line-height:1.5; }
+
+  .guide-overlay { display:none; position:fixed; inset:0; background:#0a0a10; z-index:100;
+    flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+  .guide-overlay.active { display:flex; }
+  .guide-overlay video { width:100%; max-width:420px; border-radius:16px; background:#000; }
+  .guide-overlay .guide-text { margin-top:20px; font-size:22px; font-weight:700; color:#fff;
+    text-align:center; min-height:60px; max-width:420px; }
+  .guide-overlay.found .guide-text { color: var(--amber); }
+  .guide-overlay .guide-close { margin-top:20px; padding:10px 22px; border-radius:999px; border:none;
+    background:var(--moss); color:#fff; font-family:inherit; font-weight:700; cursor:pointer; }
+
+  .live-answer { margin-top:16px; font-size:16px; color:#fff; text-align:center; max-width:420px;
+    min-height:24px; line-height:1.5; }
+  .live-input-row { display:flex; align-items:flex-end; gap:8px; margin-top:16px; width:100%; max-width:420px;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:8px; }
+  .live-input-row textarea { flex:1; border:none; background:transparent; outline:none; resize:none;
+    font-family:inherit; font-size:15px; color:var(--ink); padding:8px; min-height:20px; max-height:80px; }
+  .live-input-row .mic-btn, .live-input-row .send-btn { width:auto; }
 </style>
 </head>
 <body>
@@ -62,12 +102,49 @@
     <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. 🌱</div>
   </div>
   <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="attach-preview" id="attachPreview">
+    <img id="attachThumb" src="" alt="Selected photo">
+    <span class="attach-label">Photo attached — type your question and hit Send</span>
+    <button class="attach-remove" id="attachRemoveBtn" type="button" title="Remove photo">×</button>
+  </div>
   <div class="input-row">
     <textarea id="goal" rows="1" placeholder="Type or speak — e.g. how do I make biryani"></textarea>
     <button class="mic-btn" id="micBtn" type="button" title="Record">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
     </button>
+    <button class="cam-btn" id="camBtn" type="button" title="Add a photo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+    </button>
+    <div class="cam-menu" id="camMenu">
+      <button type="button" id="camChooseBtn">📁 Choose Photo</button>
+      <button type="button" id="camTakeBtn">📷 Take Photo</button>
+      <button type="button" id="camGuideBtn">🔍 Find it live</button>
+    </div>
+    <input type="file" id="camInputLibrary" accept="image/*" style="display:none;">
+    <input type="file" id="camInputCamera" accept="image/*" capture="environment" style="display:none;">
     <button class="send-btn" id="sendBtn" type="button">Send</button>
+  </div>
+</div>
+
+<div class="guide-overlay" id="liveCamOverlay">
+  <video id="liveCamVideo" autoplay playsinline muted></video>
+  <div class="live-answer" id="liveCamAnswer">Point the camera at anything and ask a question below.</div>
+  <div class="live-input-row">
+    <textarea id="liveCamGoal" rows="1" placeholder="Type or speak your question…"></textarea>
+    <button class="mic-btn" id="liveCamMicBtn" type="button" title="Speak">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+    </button>
+    <button class="send-btn" id="liveCamSendBtn" type="button">Ask</button>
+  </div>
+  <button class="guide-close" id="liveCamCloseBtn" type="button">Close camera</button>
+</div>
+
+<div class="guide-overlay" id="snapOverlay">
+  <video id="snapVideo" autoplay playsinline muted></video>
+  <div class="guide-text" id="snapHint">Point the camera, then capture</div>
+  <div style="display:flex; gap:12px; margin-top:10px;">
+    <button class="guide-close" id="snapCaptureBtn" type="button" style="background:var(--amber);">📸 Capture</button>
+    <button class="guide-close" id="snapCancelBtn" type="button">Cancel</button>
   </div>
 </div>
 
@@ -80,6 +157,7 @@
   const micBtn = document.getElementById('micBtn');
   const statusEl = document.getElementById('status');
 
+  // Chat memory - sent with every request so the assistant can answer follow-ups
   let history = [];          // [{role: "user"/"assistant", content: "..."}]
   let currentGoal = null;    // the active task's original text, used for "Done"
   let completedSteps = [];   // step texts done so far for the current task
@@ -101,10 +179,18 @@
     feedEl.scrollTop = feedEl.scrollHeight;
   }
 
-  function addUserBubble(text) {
+  function addUserBubble(text, imageUrl) {
     const div = document.createElement('div');
     div.className = 'msg user';
-    div.textContent = text;
+    if (imageUrl) {
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.className = 'msg-thumb';
+      div.appendChild(img);
+    }
+    const textSpan = document.createElement('div');
+    textSpan.textContent = text;
+    div.appendChild(textSpan);
     feedEl.appendChild(div);
     scrollToBottom();
   }
@@ -114,7 +200,7 @@
     div.className = 'msg assistant';
 
     steps.forEach((s) => {
-      stepCounter += 1; 
+      stepCounter += 1; // continuous numbering across batches, ignoring the model's own step field
       const line = document.createElement('div');
       line.className = 'step-line';
       line.innerHTML = `<span class="step-num">${stepCounter}</span><span>${escapeHtml(s.text ?? '')}</span>`;
@@ -170,7 +256,7 @@
     addUserBubble(text);
     history.push({ role: "user", content: text });
 
-
+    // A fresh message starts a new "task" for Done/completed_steps purposes
     currentGoal = text;
     stepCounter = 0;
     setStatus('Thinking…');
@@ -192,6 +278,7 @@
     }
   }
 
+  // "Done" button on a specific assistant bubble - continues the SAME task
   async function handleDone(btnEl) {
     btnEl.disabled = true;
     btnEl.textContent = "Getting the next steps…";
@@ -201,7 +288,7 @@
       const data = await callBackend(currentGoal, false);
       const newSteps = data.steps || [];
       completedSteps = completedSteps.concat(newSteps.map(s => s.text));
-      btnEl.remove(); 
+      btnEl.remove(); // remove old Done button, new one added on the new bubble
       addAssistantBubble(newSteps, data.is_final);
       if (!data.was_error) {
         history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
@@ -213,12 +300,8 @@
     }
   }
 
-  sendBtn.addEventListener('click', () => {
-    const text = goalEl.value.trim();
-    goalEl.value = '';
-    goalEl.style.height = 'auto';
-    sendMessage(text);
-  });
+  sendBtn.addEventListener('click', () => handleSendClick());
+
 
   goalEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -227,6 +310,11 @@
     }
   });
 
+  // --- voice input ---
+  // Two things happen at once while recording:
+  // 1. MediaRecorder captures audio -> sent to your backend's /transcribe (Groq Whisper) for the FINAL, accurate text.
+  // 2. The browser's own live speech recognition (if supported) shows words appearing in the
+  //    box in real time, purely for visual feedback while speaking - it does not send anything anywhere.
   const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let liveRecognition = null;
 
@@ -246,7 +334,7 @@
       goalEl.dispatchEvent(new Event('input')); // keep the box auto-resizing
     };
 
-    liveRecognition.onerror = () => {}; 
+    liveRecognition.onerror = () => {}; // ignore - final accuracy still comes from the backend
     try { liveRecognition.start(); } catch (e) {}
   }
 
@@ -304,6 +392,261 @@
       setStatus('Could not transcribe that recording.', true);
     }
   }
+
+  // --- camera / photo input ---
+  const camBtn = document.getElementById('camBtn');
+  const camMenu = document.getElementById('camMenu');
+  const camChooseBtn = document.getElementById('camChooseBtn');
+  const camTakeBtn = document.getElementById('camTakeBtn');
+  const camInputLibrary = document.getElementById('camInputLibrary');
+  const camInputCamera = document.getElementById('camInputCamera');
+  const attachPreview = document.getElementById('attachPreview');
+  const attachThumb = document.getElementById('attachThumb');
+  const attachRemoveBtn = document.getElementById('attachRemoveBtn');
+
+  let pendingImageFile = null;
+  let pendingImageUrl = null;
+
+  camBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    camMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => camMenu.classList.remove('open'));
+
+  camChooseBtn.addEventListener('click', () => { camMenu.classList.remove('open'); camInputLibrary.click(); });
+  camTakeBtn.addEventListener('click', () => { camMenu.classList.remove('open'); startSnapCapture(); });
+  document.getElementById('camGuideBtn').addEventListener('click', () => { camMenu.classList.remove('open'); startGuidedSearch(); });
+
+  // --- one-off live webcam snapshot (works on laptop or phone) ---
+  const snapOverlay = document.getElementById('snapOverlay');
+  const snapVideo = document.getElementById('snapVideo');
+  const snapCaptureBtn = document.getElementById('snapCaptureBtn');
+  const snapCancelBtn = document.getElementById('snapCancelBtn');
+  let snapStream = null;
+
+  async function startSnapCapture() {
+    try {
+      snapStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      snapVideo.srcObject = snapStream;
+      snapOverlay.classList.add('active');
+    } catch (err) {
+      setStatus('Could not access the camera.', true);
+    }
+  }
+
+  function stopSnapCapture() {
+    if (snapStream) {
+      snapStream.getTracks().forEach(t => t.stop());
+      snapStream = null;
+    }
+    snapOverlay.classList.remove('active');
+  }
+
+  snapCancelBtn.addEventListener('click', stopSnapCapture);
+
+  snapCaptureBtn.addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = snapVideo.videoWidth;
+    canvas.height = snapVideo.videoHeight;
+    canvas.getContext('2d').drawImage(snapVideo, 0, 0);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], 'webcam-photo.jpg', { type: 'image/jpeg' });
+      pendingImageFile = file;
+      pendingImageUrl = URL.createObjectURL(blob);
+      attachThumb.src = pendingImageUrl;
+      attachPreview.classList.add('active');
+      goalEl.placeholder = "Ask something about this photo…";
+      stopSnapCapture();
+      goalEl.focus();
+    }, 'image/jpeg', 0.85);
+  });
+
+  camInputLibrary.addEventListener('change', () => attachPhoto(camInputLibrary));
+  camInputCamera.addEventListener('change', () => attachPhoto(camInputCamera));
+
+  function attachPhoto(inputEl) {
+    const file = inputEl.files[0];
+    inputEl.value = ''; // reset so choosing the same photo again still fires 'change'
+    if (!file) return;
+
+    pendingImageFile = file;
+    pendingImageUrl = URL.createObjectURL(file);
+    attachThumb.src = pendingImageUrl;
+    attachPreview.classList.add('active');
+    goalEl.placeholder = "Ask something about this photo…";
+    goalEl.focus();
+  }
+
+  attachRemoveBtn.addEventListener('click', () => clearAttachment());
+
+  function clearAttachment() {
+    pendingImageFile = null;
+    if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl);
+    pendingImageUrl = null;
+    attachPreview.classList.remove('active');
+    goalEl.placeholder = "Type or speak — e.g. how do I make biryani";
+  }
+
+  // Send button routes to either a normal text message or an image question,
+  // depending on whether a photo is currently attached.
+  function handleSendClick() {
+    const text = goalEl.value.trim();
+    if (pendingImageFile) {
+      const question = text || "What's in this photo?";
+      goalEl.value = '';
+      goalEl.style.height = 'auto';
+      sendImageMessage(pendingImageFile, pendingImageUrl, question);
+      clearAttachment();
+    } else {
+      if (!text) return;
+      goalEl.value = '';
+      goalEl.style.height = 'auto';
+      sendMessage(text);
+    }
+  }
+
+  async function sendImageMessage(file, imageUrl, question) {
+    addUserBubble(question, imageUrl);
+    history.push({ role: "user", content: question });
+    setStatus('Looking at the photo…');
+    sendBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'photo.jpg');
+    formData.append('question', question);
+
+    try {
+      const res = await fetch(`${API}/caption-image`, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('caption failed');
+      const data = await res.json();
+
+      const div = document.createElement('div');
+      div.className = 'msg assistant';
+      const headlineEl = document.createElement('div');
+      headlineEl.className = 'answer-headline';
+      headlineEl.textContent = data.headline;
+      div.appendChild(headlineEl);
+      if (data.detail) {
+        const detailEl = document.createElement('div');
+        detailEl.className = 'answer-detail';
+        detailEl.textContent = data.detail;
+        div.appendChild(detailEl);
+      }
+      feedEl.appendChild(div);
+      scrollToBottom();
+
+      history.push({ role: "assistant", content: `${data.headline} ${data.detail}`.trim() });
+      setStatus('');
+    } catch (err) {
+      setStatus('Could not process that photo. Is the server running?', true);
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+  // --- live camera mode: stays open, ask anything (typed or spoken), anytime ---
+  const liveCamOverlay = document.getElementById('liveCamOverlay');
+  const liveCamVideo = document.getElementById('liveCamVideo');
+  const liveCamAnswer = document.getElementById('liveCamAnswer');
+  const liveCamGoal = document.getElementById('liveCamGoal');
+  const liveCamSendBtn = document.getElementById('liveCamSendBtn');
+  const liveCamMicBtn = document.getElementById('liveCamMicBtn');
+  const liveCamCloseBtn = document.getElementById('liveCamCloseBtn');
+
+  let liveCamStream = null;
+
+  async function startGuidedSearch() { // kept function name so the menu button still works
+    try {
+      liveCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      liveCamVideo.srcObject = liveCamStream;
+      liveCamOverlay.classList.add('active');
+      liveCamAnswer.textContent = "Point the camera at anything and ask a question below.";
+      liveCamGoal.value = '';
+      liveCamGoal.focus();
+    } catch (err) {
+      setStatus('Could not access the camera.', true);
+    }
+  }
+
+  function stopLiveCam() {
+    if (liveCamStream) {
+      liveCamStream.getTracks().forEach(t => t.stop());
+      liveCamStream = null;
+    }
+    liveCamOverlay.classList.remove('active');
+    window.speechSynthesis && window.speechSynthesis.cancel();
+  }
+
+  liveCamCloseBtn.addEventListener('click', stopLiveCam);
+
+  function speak(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.0;
+    window.speechSynthesis.speak(utter);
+  }
+
+  async function askLiveCamera() {
+    const question = liveCamGoal.value.trim();
+    if (!question || !liveCamStream) return;
+    liveCamGoal.value = '';
+    liveCamAnswer.textContent = "Thinking…";
+    liveCamSendBtn.disabled = true;
+
+    // Grab a fresh frame from the LIVE feed right now, at the moment the question is asked
+    const canvas = document.createElement('canvas');
+    canvas.width = liveCamVideo.videoWidth;
+    canvas.height = liveCamVideo.videoHeight;
+    canvas.getContext('2d').drawImage(liveCamVideo, 0, 0);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) { liveCamSendBtn.disabled = false; return; }
+      const formData = new FormData();
+      formData.append('file', blob, 'frame.jpg');
+      formData.append('question', question);
+
+      try {
+        const res = await fetch(`${API}/caption-image`, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('caption failed');
+        const data = await res.json();
+        const fullAnswer = `${data.headline} ${data.detail}`.trim();
+        liveCamAnswer.textContent = fullAnswer;
+        speak(data.headline); // speak just the short headline aloud, not the full detail
+        history.push({ role: "user", content: question });
+        history.push({ role: "assistant", content: fullAnswer });
+      } catch (err) {
+        liveCamAnswer.textContent = "Couldn't reach the companion - try again.";
+      } finally {
+        liveCamSendBtn.disabled = false;
+      }
+    }, 'image/jpeg', 0.8);
+  }
+
+  liveCamSendBtn.addEventListener('click', askLiveCamera);
+  liveCamGoal.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      askLiveCamera();
+    }
+  });
+
+  // Voice input for the live camera panel - reuses the same live-caption approach as the main mic
+  liveCamMicBtn.addEventListener('click', async () => {
+    if (!LiveRecognition) { setStatus('Voice input not supported in this browser.', true); return; }
+    const rec = new LiveRecognition();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.onresult = (event) => {
+      let combined = '';
+      for (let i = 0; i < event.results.length; i++) combined += event.results[i][0].transcript;
+      liveCamGoal.value = combined;
+    };
+    liveCamMicBtn.classList.add('recording');
+    rec.onend = () => { liveCamMicBtn.classList.remove('recording'); if (liveCamGoal.value.trim()) askLiveCamera(); };
+    try { rec.start(); } catch (e) {}
+  });
 </script>
 </body>
 </html>
