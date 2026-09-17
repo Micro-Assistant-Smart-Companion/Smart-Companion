@@ -93,11 +93,38 @@
   .live-input-row textarea { flex:1; border:none; background:transparent; outline:none; resize:none;
     font-family:inherit; font-size:15px; color:var(--ink); padding:8px; min-height:20px; max-height:80px; }
   .live-input-row .mic-btn, .live-input-row .send-btn { width:auto; }
+
+  /* Camera Switcher & IP Cam Styles */
+  .header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; width:100%; }
+  .header-row .mark { margin-bottom:0; }
+  .source-switcher { display:inline-flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px; gap:4px; align-items:center; }
+  .source-switcher.compact { margin-bottom:10px; }
+  .source-btn { background:transparent; border:none; color:var(--ink-muted); font-family:inherit; font-size:13px; font-weight:700; padding:5px 12px; border-radius:999px; cursor:pointer; transition:all 0.15s ease; }
+  .source-btn:hover { color:var(--ink); }
+  .source-btn.active { background:var(--moss); color:#fff; }
+  .settings-btn { background:transparent; border:none; font-size:15px; cursor:pointer; padding:6px; border-radius:50%; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .settings-btn:hover { background:var(--surface); }
+  .stream-view { width:100%; max-width:420px; border-radius:16px; background:#000; display:block; object-fit:contain; }
+  .overlay-topbar { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:420px; margin-bottom:10px; }
+  .stream-badge { font-size:11px; font-weight:700; background:#ff4757; color:#fff; padding:4px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:0.5px; }
+  .settings-modal { display:none; position:fixed; inset:0; background:rgba(10,10,16,0.85); z-index:200; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
+  .settings-modal.active { display:flex; }
+  .settings-box { background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:420px; width:100%; padding:22px; box-shadow:0 12px 36px rgba(0,0,0,0.5); }
+  .settings-title { font-size:17px; font-weight:700; color:var(--amber); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="mark">companion</div>
+  <div class="header-row">
+    <div class="mark">companion</div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <div class="source-switcher" id="camSourceSwitcher" title="Switch between Webcam and IP Camera">
+        <button type="button" class="source-btn active" id="btnSrcWebcam" data-src="webcam">💻 Webcam</button>
+        <button type="button" class="source-btn" id="btnSrcIp" data-src="ipcamera">📱 IP Camera</button>
+      </div>
+      <button type="button" class="settings-btn" id="btnIpSettings" title="Configure IP Camera URL">⚙️</button>
+    </div>
+  </div>
   <div class="feed" id="feed">
     <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. 🌱</div>
   </div>
@@ -116,6 +143,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
     </button>
     <div class="cam-menu" id="camMenu">
+      <div style="font-size:12px; color:var(--ink-muted); padding:4px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Source: <b id="camMenuSourceLabel" style="color:var(--amber);">Webcam</b></span>
+        <button type="button" id="camMenuSwitchBtn" style="color:var(--moss); font-size:11px; padding:0; border:none; background:transparent; cursor:pointer;">Switch</button>
+      </div>
       <button type="button" id="camChooseBtn">📁 Choose Photo</button>
       <button type="button" id="camTakeBtn">📷 Take Photo</button>
       <button type="button" id="camGuideBtn">🔍 Find it live</button>
@@ -127,7 +158,15 @@
 </div>
 
 <div class="guide-overlay" id="liveCamOverlay">
+  <div class="overlay-topbar">
+    <div class="source-switcher compact" id="liveOverlaySwitcher">
+      <button type="button" class="source-btn active" id="liveSrcWebcam" data-src="webcam">💻 Webcam</button>
+      <button type="button" class="source-btn" id="liveSrcIp" data-src="ipcamera">📱 IP Camera</button>
+    </div>
+    <span class="stream-badge" id="liveCamBadge">Live</span>
+  </div>
   <video id="liveCamVideo" autoplay playsinline muted></video>
+  <img id="liveCamIpImg" class="stream-view" alt="IP Camera Stream" style="display:none;">
   <div class="live-answer" id="liveCamAnswer">Point the camera at anything and ask a question below.</div>
   <div class="live-input-row">
     <textarea id="liveCamGoal" rows="1" placeholder="Type or speak your question…"></textarea>
@@ -140,11 +179,32 @@
 </div>
 
 <div class="guide-overlay" id="snapOverlay">
+  <div class="overlay-topbar">
+    <div class="source-switcher compact" id="snapOverlaySwitcher">
+      <button type="button" class="source-btn active" id="snapSrcWebcam" data-src="webcam">💻 Webcam</button>
+      <button type="button" class="source-btn" id="snapSrcIp" data-src="ipcamera">📱 IP Camera</button>
+    </div>
+  </div>
   <video id="snapVideo" autoplay playsinline muted></video>
+  <img id="snapIpImg" class="stream-view" alt="IP Camera Stream" style="display:none;">
   <div class="guide-text" id="snapHint">Point the camera, then capture</div>
   <div style="display:flex; gap:12px; margin-top:10px;">
     <button class="guide-close" id="snapCaptureBtn" type="button" style="background:var(--amber);">📸 Capture</button>
     <button class="guide-close" id="snapCancelBtn" type="button">Cancel</button>
+  </div>
+</div>
+
+<div class="settings-modal" id="ipSettingsModal">
+  <div class="settings-box">
+    <div class="settings-title">📱 IP Camera Stream URL</div>
+    <p style="font-size:13px; color:var(--ink-muted); margin:8px 0 14px; line-height:1.4;">
+      Enter the stream URL provided by the <b>IP Webcam</b> app on your phone (e.g. <code>http://10.238.42.4:8080/video</code>):
+    </p>
+    <input type="text" id="ipCameraUrlInput" placeholder="http://10.238.42.4:8080/video" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:14px; margin-bottom:14px;">
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button type="button" id="ipSettingsCancelBtn" class="guide-close" style="padding:8px 16px; margin:0; font-size:13px; background:transparent; border:1px solid var(--line);">Cancel</button>
+      <button type="button" id="ipSettingsSaveBtn" class="guide-close" style="padding:8px 18px; margin:0; font-size:13px; background:var(--moss);">Save & Connect</button>
+    </div>
   </div>
 </div>
 
@@ -404,6 +464,107 @@
   const attachThumb = document.getElementById('attachThumb');
   const attachRemoveBtn = document.getElementById('attachRemoveBtn');
 
+  // Camera Source Management
+  let currentCameraSource = localStorage.getItem('companion_cam_source') || 'webcam';
+  const btnSrcWebcam = document.getElementById('btnSrcWebcam');
+  const btnSrcIp = document.getElementById('btnSrcIp');
+  const btnIpSettings = document.getElementById('btnIpSettings');
+  const camMenuSourceLabel = document.getElementById('camMenuSourceLabel');
+  const camMenuSwitchBtn = document.getElementById('camMenuSwitchBtn');
+
+  const liveOverlaySwitcher = document.getElementById('liveOverlaySwitcher');
+  const liveSrcWebcam = document.getElementById('liveSrcWebcam');
+  const liveSrcIp = document.getElementById('liveSrcIp');
+  const liveCamIpImg = document.getElementById('liveCamIpImg');
+
+  const snapOverlaySwitcher = document.getElementById('snapOverlaySwitcher');
+  const snapSrcWebcam = document.getElementById('snapSrcWebcam');
+  const snapSrcIp = document.getElementById('snapSrcIp');
+  const snapIpImg = document.getElementById('snapIpImg');
+
+  const ipSettingsModal = document.getElementById('ipSettingsModal');
+  const ipCameraUrlInput = document.getElementById('ipCameraUrlInput');
+  const ipSettingsCancelBtn = document.getElementById('ipSettingsCancelBtn');
+  const ipSettingsSaveBtn = document.getElementById('ipSettingsSaveBtn');
+
+  function setCameraSource(source) {
+    currentCameraSource = source;
+    localStorage.setItem('companion_cam_source', source);
+
+    const isWebcam = source === 'webcam';
+    btnSrcWebcam && btnSrcWebcam.classList.toggle('active', isWebcam);
+    btnSrcIp && btnSrcIp.classList.toggle('active', !isWebcam);
+    liveSrcWebcam && liveSrcWebcam.classList.toggle('active', isWebcam);
+    liveSrcIp && liveSrcIp.classList.toggle('active', !isWebcam);
+    snapSrcWebcam && snapSrcWebcam.classList.toggle('active', isWebcam);
+    snapSrcIp && snapSrcIp.classList.toggle('active', !isWebcam);
+
+    if (camMenuSourceLabel) camMenuSourceLabel.textContent = isWebcam ? 'Webcam' : 'IP Camera';
+    if (camMenuSwitchBtn) camMenuSwitchBtn.textContent = isWebcam ? 'Use IP Cam' : 'Use Webcam';
+
+    // If snap overlay is currently open, switch stream view
+    if (snapOverlay && snapOverlay.classList.contains('active')) {
+      startSnapCapture();
+    }
+    // If live camera overlay is currently open, switch stream view
+    if (liveCamOverlay && liveCamOverlay.classList.contains('active')) {
+      startGuidedSearch();
+    }
+  }
+
+  btnSrcWebcam.addEventListener('click', () => setCameraSource('webcam'));
+  btnSrcIp.addEventListener('click', () => setCameraSource('ipcamera'));
+  liveSrcWebcam.addEventListener('click', () => setCameraSource('webcam'));
+  liveSrcIp.addEventListener('click', () => setCameraSource('ipcamera'));
+  snapSrcWebcam.addEventListener('click', () => setCameraSource('webcam'));
+  snapSrcIp.addEventListener('click', () => setCameraSource('ipcamera'));
+  camMenuSwitchBtn.addEventListener('click', () => {
+    setCameraSource(currentCameraSource === 'webcam' ? 'ipcamera' : 'webcam');
+  });
+
+  // Fetch current backend IP camera settings on start
+  async function checkCameraStatus() {
+    try {
+      const res = await fetch(`${API}/camera/status`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url && ipCameraUrlInput) {
+          ipCameraUrlInput.value = data.url;
+        }
+      }
+    } catch (e) {}
+  }
+  checkCameraStatus();
+
+  btnIpSettings.addEventListener('click', () => {
+    ipSettingsModal.classList.add('active');
+    ipCameraUrlInput.focus();
+  });
+  ipSettingsCancelBtn.addEventListener('click', () => {
+    ipSettingsModal.classList.remove('active');
+  });
+  ipSettingsSaveBtn.addEventListener('click', async () => {
+    const newUrl = ipCameraUrlInput.value.trim();
+    if (!newUrl) return;
+    setStatus('Connecting to IP Camera…');
+    try {
+      const res = await fetch(`${API}/camera/set-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newUrl }),
+      });
+      if (res.ok) {
+        setStatus('IP Camera URL updated.');
+        setCameraSource('ipcamera');
+      } else {
+        setStatus('Failed to update IP Camera URL.', true);
+      }
+    } catch (err) {
+      setStatus('Could not reach backend.', true);
+    }
+    ipSettingsModal.classList.remove('active');
+  });
+
   let pendingImageFile = null;
   let pendingImageUrl = null;
 
@@ -417,20 +578,40 @@
   camTakeBtn.addEventListener('click', () => { camMenu.classList.remove('open'); startSnapCapture(); });
   document.getElementById('camGuideBtn').addEventListener('click', () => { camMenu.classList.remove('open'); startGuidedSearch(); });
 
-  // --- one-off live webcam snapshot (works on laptop or phone) ---
+  // --- one-off live snapshot (works for Webcam or IP Camera) ---
   const snapOverlay = document.getElementById('snapOverlay');
   const snapVideo = document.getElementById('snapVideo');
   const snapCaptureBtn = document.getElementById('snapCaptureBtn');
   const snapCancelBtn = document.getElementById('snapCancelBtn');
+  const snapHint = document.getElementById('snapHint');
   let snapStream = null;
 
   async function startSnapCapture() {
-    try {
-      snapStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      snapVideo.srcObject = snapStream;
+    if (currentCameraSource === 'webcam') {
+      snapIpImg.style.display = 'none';
+      snapIpImg.src = '';
+      snapVideo.style.display = 'block';
+      snapHint.textContent = 'Point your webcam, then capture';
+      try {
+        if (!snapStream) {
+          snapStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        snapVideo.srcObject = snapStream;
+        snapOverlay.classList.add('active');
+      } catch (err) {
+        setStatus('Could not access the webcam.', true);
+      }
+    } else {
+      // IP Camera mode
+      if (snapStream) {
+        snapStream.getTracks().forEach(t => t.stop());
+        snapStream = null;
+      }
+      snapVideo.style.display = 'none';
+      snapIpImg.style.display = 'block';
+      snapIpImg.src = `${API}/camera/stream?t=${Date.now()}`;
+      snapHint.textContent = 'Point your IP Camera, then capture';
       snapOverlay.classList.add('active');
-    } catch (err) {
-      setStatus('Could not access the camera.', true);
     }
   }
 
@@ -439,28 +620,50 @@
       snapStream.getTracks().forEach(t => t.stop());
       snapStream = null;
     }
+    snapIpImg.src = '';
     snapOverlay.classList.remove('active');
   }
 
   snapCancelBtn.addEventListener('click', stopSnapCapture);
 
-  snapCaptureBtn.addEventListener('click', () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = snapVideo.videoWidth;
-    canvas.height = snapVideo.videoHeight;
-    canvas.getContext('2d').drawImage(snapVideo, 0, 0);
+  snapCaptureBtn.addEventListener('click', async () => {
+    if (currentCameraSource === 'webcam') {
+      const canvas = document.createElement('canvas');
+      canvas.width = snapVideo.videoWidth;
+      canvas.height = snapVideo.videoHeight;
+      canvas.getContext('2d').drawImage(snapVideo, 0, 0);
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], 'webcam-photo.jpg', { type: 'image/jpeg' });
-      pendingImageFile = file;
-      pendingImageUrl = URL.createObjectURL(blob);
-      attachThumb.src = pendingImageUrl;
-      attachPreview.classList.add('active');
-      goalEl.placeholder = "Ask something about this photo…";
-      stopSnapCapture();
-      goalEl.focus();
-    }, 'image/jpeg', 0.85);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'webcam-photo.jpg', { type: 'image/jpeg' });
+        pendingImageFile = file;
+        pendingImageUrl = URL.createObjectURL(blob);
+        attachThumb.src = pendingImageUrl;
+        attachPreview.classList.add('active');
+        goalEl.placeholder = "Ask something about this photo…";
+        stopSnapCapture();
+        goalEl.focus();
+      }, 'image/jpeg', 0.85);
+    } else {
+      // IP Camera: fetch clean JPEG frame directly from backend
+      setStatus('Capturing from IP Camera…');
+      try {
+        const res = await fetch(`${API}/camera/frame?t=${Date.now()}`);
+        if (!res.ok) throw new Error('Could not retrieve frame');
+        const blob = await res.blob();
+        const file = new File([blob], 'ipcam-photo.jpg', { type: 'image/jpeg' });
+        pendingImageFile = file;
+        pendingImageUrl = URL.createObjectURL(blob);
+        attachThumb.src = pendingImageUrl;
+        attachPreview.classList.add('active');
+        goalEl.placeholder = "Ask something about this photo…";
+        stopSnapCapture();
+        goalEl.focus();
+        setStatus('');
+      } catch (err) {
+        setStatus('Could not capture frame from IP Camera. Check if stream is active.', true);
+      }
+    }
   });
 
   camInputLibrary.addEventListener('change', () => attachPhoto(camInputLibrary));
@@ -545,6 +748,7 @@
       sendBtn.disabled = false;
     }
   }
+
   // --- live camera mode: stays open, ask anything (typed or spoken), anytime ---
   const liveCamOverlay = document.getElementById('liveCamOverlay');
   const liveCamVideo = document.getElementById('liveCamVideo');
@@ -556,16 +760,36 @@
 
   let liveCamStream = null;
 
-  async function startGuidedSearch() { // kept function name so the menu button still works
-    try {
-      liveCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      liveCamVideo.srcObject = liveCamStream;
+  async function startGuidedSearch() {
+    if (currentCameraSource === 'webcam') {
+      liveCamIpImg.style.display = 'none';
+      liveCamIpImg.src = '';
+      liveCamVideo.style.display = 'block';
+      try {
+        if (!liveCamStream) {
+          liveCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        }
+        liveCamVideo.srcObject = liveCamStream;
+        liveCamOverlay.classList.add('active');
+        liveCamAnswer.textContent = "Webcam active. Point at anything and ask a question below.";
+        liveCamGoal.value = '';
+        liveCamGoal.focus();
+      } catch (err) {
+        setStatus('Could not access the webcam.', true);
+      }
+    } else {
+      // IP Camera mode
+      if (liveCamStream) {
+        liveCamStream.getTracks().forEach(t => t.stop());
+        liveCamStream = null;
+      }
+      liveCamVideo.style.display = 'none';
+      liveCamIpImg.style.display = 'block';
+      liveCamIpImg.src = `${API}/camera/stream?t=${Date.now()}`;
       liveCamOverlay.classList.add('active');
-      liveCamAnswer.textContent = "Point the camera at anything and ask a question below.";
+      liveCamAnswer.textContent = "IP Camera active. Point your phone at anything and ask a question below.";
       liveCamGoal.value = '';
       liveCamGoal.focus();
-    } catch (err) {
-      setStatus('Could not access the camera.', true);
     }
   }
 
@@ -574,6 +798,7 @@
       liveCamStream.getTracks().forEach(t => t.stop());
       liveCamStream = null;
     }
+    liveCamIpImg.src = '';
     liveCamOverlay.classList.remove('active');
     window.speechSynthesis && window.speechSynthesis.cancel();
   }
@@ -590,38 +815,67 @@
 
   async function askLiveCamera() {
     const question = liveCamGoal.value.trim();
-    if (!question || !liveCamStream) return;
+    if (!question) return;
+
     liveCamGoal.value = '';
     liveCamAnswer.textContent = "Thinking…";
     liveCamSendBtn.disabled = true;
 
-    // Grab a fresh frame from the LIVE feed right now, at the moment the question is asked
-    const canvas = document.createElement('canvas');
-    canvas.width = liveCamVideo.videoWidth;
-    canvas.height = liveCamVideo.videoHeight;
-    canvas.getContext('2d').drawImage(liveCamVideo, 0, 0);
+    if (currentCameraSource === 'webcam') {
+      if (!liveCamStream) { liveCamSendBtn.disabled = false; return; }
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) { liveCamSendBtn.disabled = false; return; }
-      const formData = new FormData();
-      formData.append('file', blob, 'frame.jpg');
-      formData.append('question', question);
+      // Grab a fresh frame from the LIVE feed right now
+      const canvas = document.createElement('canvas');
+      canvas.width = liveCamVideo.videoWidth;
+      canvas.height = liveCamVideo.videoHeight;
+      canvas.getContext('2d').drawImage(liveCamVideo, 0, 0);
 
+      canvas.toBlob(async (blob) => {
+        if (!blob) { liveCamSendBtn.disabled = false; return; }
+        const formData = new FormData();
+        formData.append('file', blob, 'frame.jpg');
+        formData.append('question', question);
+
+        try {
+          const res = await fetch(`${API}/caption-image`, { method: 'POST', body: formData });
+          if (!res.ok) throw new Error('caption failed');
+          const data = await res.json();
+          const fullAnswer = `${data.headline} ${data.detail}`.trim();
+          liveCamAnswer.textContent = fullAnswer;
+          speak(data.headline);
+          history.push({ role: "user", content: question });
+          history.push({ role: "assistant", content: fullAnswer });
+        } catch (err) {
+          liveCamAnswer.textContent = "Couldn't reach the companion - try again.";
+        } finally {
+          liveCamSendBtn.disabled = false;
+        }
+      }, 'image/jpeg', 0.8);
+    } else {
+      // IP Camera mode: directly ask about the latest IP Camera frame
       try {
-        const res = await fetch(`${API}/caption-image`, { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('caption failed');
+        const formData = new FormData();
+        formData.append('question', question);
+
+        const res = await fetch(`${API}/camera/ask`, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('camera ask failed');
         const data = await res.json();
-        const fullAnswer = `${data.headline} ${data.detail}`.trim();
-        liveCamAnswer.textContent = fullAnswer;
-        speak(data.headline); // speak just the short headline aloud, not the full detail
-        history.push({ role: "user", content: question });
-        history.push({ role: "assistant", content: fullAnswer });
+        if (data.error) {
+          liveCamAnswer.textContent = data.error;
+          speak("Camera frame not available.");
+        } else {
+          const fullAnswer = `${data.headline} ${data.detail}`.trim();
+          liveCamAnswer.textContent = fullAnswer;
+          speak(data.headline);
+          history.push({ role: "user", content: question });
+          history.push({ role: "assistant", content: fullAnswer });
+        }
       } catch (err) {
-        liveCamAnswer.textContent = "Couldn't reach the companion - try again.";
+        liveCamAnswer.textContent = "Couldn't reach IP camera or companion backend - check your connection.";
       } finally {
         liveCamSendBtn.disabled = false;
       }
-    }, 'image/jpeg', 0.8);
+    }
   }
 
   liveCamSendBtn.addEventListener('click', askLiveCamera);
@@ -647,6 +901,9 @@
     rec.onend = () => { liveCamMicBtn.classList.remove('recording'); if (liveCamGoal.value.trim()) askLiveCamera(); };
     try { rec.start(); } catch (e) {}
   });
+
+  // Apply initial source visual state
+  setCameraSource(currentCameraSource);
 </script>
 </body>
 </html>
