@@ -9,8 +9,11 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+# pyrefly: ignore [missing-import]
 from app.models import TextInput, RedactOutput, TaskRequest, TaskResponse, TranscribeResponse, DetectObjectsResponse, CaptionResponse, GuidanceResponse
+# pyrefly: ignore [missing-import]
 from app.redact import redact_text
+# pyrefly: ignore [missing-import]
 from app.llm import decompose_task
 from visual.vision import detect_objects_summary
 from visual.caption import answer_about_image
@@ -102,7 +105,7 @@ def camera_stream():
             if frame_bytes:
                 yield (b"--frame\r\n"
                        b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
-            time.sleep(0.04)  # ~25 FPS
+            time.sleep(0.04)  
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/camera/frame")
