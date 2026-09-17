@@ -45,3 +45,14 @@ class CaptionResponse(BaseModel):
 class GuidanceResponse(BaseModel):
     found: bool
     guidance: str
+
+
+class CameraConfig(BaseModel):
+    url: str
+
+
+class CameraStatusResponse(BaseModel):
+    connected: bool
+    url: str
+    last_frame_age_seconds: float | None = None
+    message: str = ""
