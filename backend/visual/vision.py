@@ -1,6 +1,7 @@
 import io
 from collections import Counter
 from PIL import Image
+# pyrefly: ignore [missing-import]
 from ultralytics import YOLO
 
 model = YOLO("yolov8n.pt")  

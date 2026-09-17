@@ -10,3 +10,4 @@ numpy
 torch
 ultralytics
 pillow
+opencv-python
