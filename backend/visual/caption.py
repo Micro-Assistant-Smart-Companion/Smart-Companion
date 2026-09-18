@@ -1,4 +1,3 @@
-
 import os
 import re
 import base64
@@ -10,6 +9,15 @@ client = Groq(api_key=api_key)
 VISION_MODEL = "qwen/qwen3.8-27b"  
 
 
+def _strip_markdown(text: str) -> str:
+    """Safety net in case the model adds markdown despite being told not to."""
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)     # **bold**
+    text = re.sub(r"\*(.*?)\*", r"\1", text)          # *italic*
+    text = re.sub(r"^\s*[\*\-]\s+", "", text, flags=re.MULTILINE)  # * bullet / - bullet
+    text = re.sub(r"^\s*#{1,6}\s*", "", text, flags=re.MULTILINE)  # # headers
+    return text.strip()
+
+
 def _build_instruction(question: str) -> str:
     return f"""Answer the question about this photo for a neurodivergent user who scans
 quickly and may only read the first line. Structure your reply in exactly two parts:
@@ -17,6 +25,12 @@ quickly and may only read the first line. Structure your reply in exactly two pa
 1. FIRST LINE: one short, direct sentence answering the question plainly - the
    headline answer only (e.g. "The ball is on the bed, near the pillows.").
 2. Then a blank line, followed by more detail and description if useful.
+
+Write in plain, simple sentences only - no markdown of any kind. That means no
+asterisks, no **bold** or *italic*, no bullet points or numbered lists using
+symbols, and no headers. If the image contains a table, schedule, or list,
+describe it as flowing sentences (e.g. "On weekdays, mornings are for QA and
+afternoons are for DILR or VARC.") instead of recreating its formatting.
 
 Question: "{question}\""""
 
@@ -44,7 +58,7 @@ def answer_about_image(image_bytes: bytes, question: str) -> dict:
 
     full_text = (completion.choices[0].message.content or "").strip()
     parts = re.split(r"\n\s*\n", full_text, maxsplit=1)
-    headline = parts[0].strip()
-    detail = parts[1].strip() if len(parts) > 1 else ""
+    headline = _strip_markdown(parts[0].strip())
+    detail = _strip_markdown(parts[1].strip()) if len(parts) > 1 else ""
 
     return {"headline": headline, "detail": detail}

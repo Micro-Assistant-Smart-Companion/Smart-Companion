@@ -20,7 +20,7 @@ from speech_to_text.speech import transcribe_audio_bytes
 
 app = FastAPI(title="Smart Companion API")
 
-CAMERA_URL = os.getenv("CAMERA_URL", "http://10.238.42.4:8080/video")
+CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
 camera = IPCameraStream(CAMERA_URL)
 camera.start()
 
