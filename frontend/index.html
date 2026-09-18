@@ -99,9 +99,10 @@
   .header-row .mark { margin-bottom:0; }
   .source-switcher { display:inline-flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px; gap:4px; align-items:center; }
   .source-switcher.compact { margin-bottom:10px; }
-  .source-btn { background:transparent; border:none; color:var(--ink-muted); font-family:inherit; font-size:13px; font-weight:700; padding:5px 12px; border-radius:999px; cursor:pointer; transition:all 0.15s ease; }
+  .source-btn { background:transparent; border:none; color:var(--ink-muted); font-family:inherit; font-size:13px; font-weight:700; padding:5px 12px; border-radius:999px; cursor:pointer; transition:all 0.15s ease; display:inline-flex; align-items:center; }
   .source-btn:hover { color:var(--ink); }
   .source-btn.active { background:var(--moss); color:#fff; }
+  .cam-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#777; margin-right:6px; transition:background 0.3s ease; }
   .settings-btn { background:transparent; border:none; font-size:15px; cursor:pointer; padding:6px; border-radius:50%; line-height:1; display:flex; align-items:center; justify-content:center; }
   .settings-btn:hover { background:var(--surface); }
   .stream-view { width:100%; max-width:420px; border-radius:16px; background:#000; display:block; object-fit:contain; }
@@ -109,7 +110,7 @@
   .stream-badge { font-size:11px; font-weight:700; background:#ff4757; color:#fff; padding:4px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:0.5px; }
   .settings-modal { display:none; position:fixed; inset:0; background:rgba(10,10,16,0.85); z-index:200; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
   .settings-modal.active { display:flex; }
-  .settings-box { background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:420px; width:100%; padding:22px; box-shadow:0 12px 36px rgba(0,0,0,0.5); }
+  .settings-box { background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:440px; width:100%; padding:22px; box-shadow:0 12px 36px rgba(0,0,0,0.5); }
   .settings-title { font-size:17px; font-weight:700; color:var(--amber); }
 </style>
 </head>
@@ -120,7 +121,7 @@
     <div style="display:flex; align-items:center; gap:6px;">
       <div class="source-switcher" id="camSourceSwitcher" title="Switch between Webcam and IP Camera">
         <button type="button" class="source-btn active" id="btnSrcWebcam" data-src="webcam">💻 Webcam</button>
-        <button type="button" class="source-btn" id="btnSrcIp" data-src="ipcamera">📱 IP Camera</button>
+        <button type="button" class="source-btn" id="btnSrcIp" data-src="ipcamera"><span class="cam-dot" id="headerIpDot"></span>📱 IP Camera</button>
       </div>
       <button type="button" class="settings-btn" id="btnIpSettings" title="Configure IP Camera URL">⚙️</button>
     </div>
@@ -196,14 +197,21 @@
 
 <div class="settings-modal" id="ipSettingsModal">
   <div class="settings-box">
-    <div class="settings-title">📱 IP Camera Stream URL</div>
-    <p style="font-size:13px; color:var(--ink-muted); margin:8px 0 14px; line-height:1.4;">
+    <div class="settings-title">📱 IP Camera Stream Settings</div>
+    <div id="ipStatusIndicator" style="display:flex; align-items:center; gap:8px; margin:10px 0 12px; font-size:13px; font-weight:700;">
+      <span class="cam-dot" id="ipModalDot" style="width:9px; height:9px; margin-right:0;"></span>
+      <span id="ipModalStatusText" style="color:var(--ink-muted);">Checking camera status…</span>
+    </div>
+    <p style="font-size:13px; color:var(--ink-muted); margin:0 0 10px; line-height:1.4;">
       Enter the stream URL provided by the <b>IP Webcam</b> app on your phone (e.g. <code>http://10.238.42.4:8080/video</code>):
     </p>
     <input type="text" id="ipCameraUrlInput" placeholder="http://10.238.42.4:8080/video" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:14px; margin-bottom:14px;">
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
-      <button type="button" id="ipSettingsCancelBtn" class="guide-close" style="padding:8px 16px; margin:0; font-size:13px; background:transparent; border:1px solid var(--line);">Cancel</button>
-      <button type="button" id="ipSettingsSaveBtn" class="guide-close" style="padding:8px 18px; margin:0; font-size:13px; background:var(--moss);">Save & Connect</button>
+    <div style="display:flex; gap:8px; justify-content:space-between; align-items:center;">
+      <button type="button" id="ipTestBtn" class="guide-close" style="padding:8px 14px; margin:0; font-size:12px; background:transparent; border:1px solid var(--line); color:var(--amber);">⚡ Test Status</button>
+      <div style="display:flex; gap:8px;">
+        <button type="button" id="ipSettingsCancelBtn" class="guide-close" style="padding:8px 14px; margin:0; font-size:13px; background:transparent; border:1px solid var(--line);">Cancel</button>
+        <button type="button" id="ipSettingsSaveBtn" class="guide-close" style="padding:8px 18px; margin:0; font-size:13px; background:var(--moss);">Save & Connect</button>
+      </div>
     </div>
   </div>
 </div>
@@ -522,31 +530,82 @@
     setCameraSource(currentCameraSource === 'webcam' ? 'ipcamera' : 'webcam');
   });
 
-  // Fetch current backend IP camera settings on start
+  const headerIpDot = document.getElementById('headerIpDot');
+  const ipModalDot = document.getElementById('ipModalDot');
+  const ipModalStatusText = document.getElementById('ipModalStatusText');
+  const ipTestBtn = document.getElementById('ipTestBtn');
+
+  // Fetch current backend IP camera settings and update live status
   async function checkCameraStatus() {
     try {
       const res = await fetch(`${API}/camera/status`);
       if (res.ok) {
         const data = await res.json();
-        if (data.url && ipCameraUrlInput) {
+        if (data.url && ipCameraUrlInput && document.activeElement !== ipCameraUrlInput) {
           ipCameraUrlInput.value = data.url;
         }
+
+        const isConnected = !!data.connected;
+        const color = isConnected ? '#2ed573' : '#ff4757';
+        if (headerIpDot) {
+          headerIpDot.style.background = color;
+          headerIpDot.title = isConnected ? `IP Camera connected (${data.url})` : 'IP Camera offline';
+        }
+        if (ipModalDot) ipModalDot.style.background = color;
+        if (ipModalStatusText) {
+          ipModalStatusText.textContent = isConnected
+            ? `🟢 Connected (Active feed)`
+            : `🔴 ${data.message || 'Offline or waiting for stream'}`;
+          ipModalStatusText.style.color = color;
+        }
+        return data;
       }
-    } catch (e) {}
+    } catch (e) {
+      if (headerIpDot) headerIpDot.style.background = '#777';
+      if (ipModalDot) ipModalDot.style.background = '#777';
+      if (ipModalStatusText) {
+        ipModalStatusText.textContent = 'Backend offline or unreachable';
+        ipModalStatusText.style.color = 'var(--ink-muted)';
+      }
+    }
+    return null;
   }
+
+  // Initial check and periodic polling every 8 seconds
   checkCameraStatus();
+  setInterval(checkCameraStatus, 8000);
 
   btnIpSettings.addEventListener('click', () => {
     ipSettingsModal.classList.add('active');
+    checkCameraStatus();
     ipCameraUrlInput.focus();
   });
   ipSettingsCancelBtn.addEventListener('click', () => {
     ipSettingsModal.classList.remove('active');
   });
+
+  if (ipTestBtn) {
+    ipTestBtn.addEventListener('click', async () => {
+      ipTestBtn.disabled = true;
+      ipTestBtn.textContent = 'Testing…';
+      const status = await checkCameraStatus();
+      ipTestBtn.disabled = false;
+      ipTestBtn.textContent = '⚡ Test Status';
+      if (status && status.connected) {
+        setStatus('IP Camera stream verified active!');
+      } else {
+        setStatus('IP Camera offline. Check phone app or IP address.', true);
+      }
+    });
+  }
+
   ipSettingsSaveBtn.addEventListener('click', async () => {
     const newUrl = ipCameraUrlInput.value.trim();
     if (!newUrl) return;
     setStatus('Connecting to IP Camera…');
+    ipSettingsSaveBtn.disabled = true;
+    ipSettingsSaveBtn.textContent = 'Connecting…';
+
     try {
       const res = await fetch(`${API}/camera/set-url`, {
         method: 'POST',
@@ -554,15 +613,25 @@
         body: JSON.stringify({ url: newUrl }),
       });
       if (res.ok) {
-        setStatus('IP Camera URL updated.');
+        const data = await res.json();
+        ipCameraUrlInput.value = data.url;
         setCameraSource('ipcamera');
+        await checkCameraStatus();
+        if (data.connected) {
+          setStatus('IP Camera connected successfully.');
+        } else {
+          setStatus('IP Camera URL saved. Reconnecting in background…');
+        }
       } else {
         setStatus('Failed to update IP Camera URL.', true);
       }
     } catch (err) {
       setStatus('Could not reach backend.', true);
+    } finally {
+      ipSettingsSaveBtn.disabled = false;
+      ipSettingsSaveBtn.textContent = 'Save & Connect';
+      ipSettingsModal.classList.remove('active');
     }
-    ipSettingsModal.classList.remove('active');
   });
 
   let pendingImageFile = null;

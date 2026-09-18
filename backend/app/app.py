@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import time
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -8,9 +9,22 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from app.models import TextInput, RedactOutput, TaskRequest, TaskResponse, TranscribeResponse, DetectObjectsResponse, CaptionResponse, GuidanceResponse
+# pyrefly: ignore [missing-import]
+from app.models import (
+    TextInput,
+    RedactOutput,
+    TaskRequest,
+    TaskResponse,
+    TranscribeResponse,
+    DetectObjectsResponse,
+    CaptionResponse,
+    GuidanceResponse,
+    CameraConfig,
+    CameraStatusResponse,
+)
+# pyrefly: ignore [missing-import]
 from app.redact import redact_text
+# pyrefly: ignore [missing-import]
 from app.llm import decompose_task
 from visual.vision import detect_objects_summary
 from visual.caption import answer_about_image
@@ -20,6 +34,7 @@ from speech_to_text.speech import transcribe_audio_bytes
 
 app = FastAPI(title="Smart Companion API")
 
+<<<<<<< HEAD
 CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
 camera = IPCameraStream(CAMERA_URL)
 camera.start()
@@ -31,12 +46,22 @@ class CameraConfig(BaseModel):
 def health():
     return {"status": "OK"}
 
+=======
+>>>>>>> 697e3509e509b0ed5520d5b1cc2b0757431e0a8a
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+CAMERA_URL = os.getenv("CAMERA_URL", "http://10.238.42.4:8080/video")
+camera = IPCameraStream(CAMERA_URL)
+camera.start()
+
+@app.get("/health")
+def health():
+    return {"status": "OK"}
  
 @app.post("/redact", response_model=RedactOutput)
 def redact_pii(input: TextInput):
@@ -82,27 +107,36 @@ async def guide_search(file: UploadFile = File(...), target: str = Form(...)):
     safe_target = redact_text(target)
     return get_guidance(image_bytes, safe_target)
 
-@app.get("/camera/status")
-def camera_status():
-    return {
-        "connected": camera.is_connected(),
-        "url": camera.rtsp_url
-    }
+# --- IP Camera Endpoints integrated with frontend settings ---
 
-@app.post("/camera/set-url")
+@app.get("/camera/status", response_model=CameraStatusResponse)
+def camera_status():
+    return camera.get_status()
+
+@app.post("/camera/set-url", response_model=CameraStatusResponse)
 def camera_set_url(config: CameraConfig):
     camera.set_url(config.url)
-    return {"status": "ok", "url": config.url}
+    # Give the background thread a brief moment to attempt connection
+    time.sleep(0.3)
+    return camera.get_status()
 
 @app.get("/camera/stream")
-def camera_stream():
-    def generate():
-        while True:
-            frame_bytes = camera.get_latest_jpeg()
-            if frame_bytes:
-                yield (b"--frame\r\n"
-                       b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
-            time.sleep(0.04)  # ~25 FPS
+async def camera_stream():
+    async def generate():
+        try:
+            while True:
+                frame_bytes = camera.get_latest_jpeg()
+                if frame_bytes:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+                    )
+                    await asyncio.sleep(0.04)  # ~25 FPS
+                else:
+                    await asyncio.sleep(0.2)  # Reduce CPU usage when camera is offline
+        except (GeneratorExit, asyncio.CancelledError):
+            pass
+
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/camera/frame")
@@ -110,7 +144,11 @@ def camera_frame():
     frame_bytes = camera.get_latest_jpeg()
     if not frame_bytes:
         return Response(status_code=503, content="Camera frame not available")
-    return Response(content=frame_bytes, media_type="image/jpeg")
+    return Response(
+        content=frame_bytes,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"},
+    )
 
 @app.post("/camera/ask")
 def ask_ip_camera(question: str = Form(...)):
@@ -120,3 +158,18 @@ def ask_ip_camera(question: str = Form(...)):
     
     safe_question = redact_text(question)
     return answer_about_image(frame_bytes, safe_question)
+
+@app.get("/camera/detect-objects", response_model=DetectObjectsResponse)
+def detect_objects_ip_camera():
+    frame_bytes = camera.get_latest_jpeg()
+    if not frame_bytes:
+        return {"summary": "Camera frame not available. Please check that your IP Webcam stream is active."}
+    return {"summary": detect_objects_summary(frame_bytes)}
+
+@app.post("/camera/guide-search", response_model=GuidanceResponse)
+def guide_search_ip_camera(target: str = Form(...)):
+    frame_bytes = camera.get_latest_jpeg()
+    if not frame_bytes:
+        return {"found": False, "guidance": "Camera frame not available. Check your IP stream."}
+    safe_target = redact_text(target)
+    return get_guidance(frame_bytes, safe_target)
