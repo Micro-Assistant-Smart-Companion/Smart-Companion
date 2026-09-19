@@ -39,7 +39,7 @@ class DetectObjectsResponse(BaseModel):
 
 class CaptionResponse(BaseModel):
     headline: str
-    detail: str = ""
+    steps: list[str] = []
 
 
 class GuidanceResponse(BaseModel):
@@ -56,3 +56,22 @@ class CameraStatusResponse(BaseModel):
     url: str
     last_frame_age_seconds: float | None = None
     message: str = ""
+    
+class DocumentUploadResponse(BaseModel):
+    document_id: str
+    filename: str
+    word_count: int
+    truncated: bool
+    preview: str
+    page_count: int = 0
+    pages_pending_vision: int = 0
+
+
+class DocumentQuestionRequest(BaseModel):
+    document_id: str
+    question: str
+
+
+class DocumentAnswerResponse(BaseModel):
+    headline: str
+    detail: str = ""

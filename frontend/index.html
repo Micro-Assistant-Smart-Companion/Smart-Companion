@@ -6,18 +6,18 @@
 <title>Companion — say it, break it down</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #15161d; --surface: #1f2130; --ink: #f2f1f7; --ink-muted: #a8a7bd;
-    --moss: #6c5ce7; --moss-dark: #5a48d1; --amber: #ff9f43; --amber-dark: #e8862c;
+    --moss: #3c25eb; --moss-dark: #4231ae; --amber: #ff9f43; --amber-dark: #e8862c;
     --line: #34364a; --error: #ff6b6b;
   }
   * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Comic Neue', 'Comic Sans MS', cursive, sans-serif; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif; }
   body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 40px; }
   .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; height:calc(100vh - 72px); }
-  .mark { font-family:'Comic Neue', cursive; font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
+  .mark { font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
 
   /* chat feed */
   .feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-bottom:16px; }
@@ -34,7 +34,7 @@
   .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink);
     background:transparent; border:1.5px solid var(--moss); border-radius:999px; padding:8px 16px; cursor:pointer; }
   .done-btn:hover { background:var(--moss); color:#fff; }
-  .done-note { font-family:'Comic Neue', cursive; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
+  .done-note { font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
 
   /* input row */
   .input-row { position:relative; display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
@@ -54,12 +54,20 @@
   .mic-btn svg, .cam-btn svg { width:18px; height:18px; }
 
   .cam-menu { position:relative; }
-  .cam-menu { display:none; position:absolute; bottom:56px; background:var(--surface); border:1px solid var(--line);
-    border-radius:10px; padding:6px; flex-direction:column; gap:4px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:10; }
+  .cam-menu { display:none; position:absolute; bottom:56px; right:0; background:var(--surface); border:1px solid var(--line);
+    border-radius:16px; padding:8px; flex-direction:column; gap:2px; box-shadow:0 12px 32px rgba(0,0,0,0.45); z-index:10; min-width:250px; }
   .cam-menu.open { display:flex; }
-  .cam-menu button { font-family:inherit; font-size:14px; text-align:left; padding:8px 12px; border:none;
-    background:transparent; color:var(--ink); border-radius:6px; cursor:pointer; white-space:nowrap; }
-  .cam-menu button:hover { background:var(--line); }
+  .attach-menu-header { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-muted);
+    padding:6px 10px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+  .attach-menu-header b { color:var(--amber); }
+  .attach-menu-switch { color:var(--moss); font-size:11px; border:none; background:transparent; cursor:pointer; padding:0; font-weight:700; font-family:inherit; }
+  .attach-menu-item { display:flex; align-items:center; gap:12px; width:100%; border:none; background:transparent;
+    padding:9px 10px; border-radius:10px; cursor:pointer; text-align:left; font-family:inherit; }
+  .attach-menu-item:hover { background:var(--line); }
+  .attach-icon { flex-shrink:0; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .attach-text { display:flex; flex-direction:column; gap:1px; }
+  .attach-text .attach-title { font-size:14px; color:var(--ink); font-weight:700; }
+  .attach-text .attach-sub { font-size:12px; color:var(--ink-muted); font-weight:400; }
 
   .status { font-size:13px; color:var(--ink-muted); min-height:18px; margin-bottom:4px; }
   .status.error { color:var(--error); }
@@ -70,6 +78,15 @@
   .attach-preview img { width:44px; height:44px; object-fit:cover; border-radius:8px; }
   .attach-preview .attach-label { flex:1; font-size:13px; color:var(--ink-muted); }
   .attach-preview .attach-remove { border:none; background:transparent; color:var(--error); font-size:18px;
+    cursor:pointer; padding:2px 8px; line-height:1; }
+
+  .doc-attach-preview { display:none; align-items:center; gap:10px; padding:8px 10px; margin-bottom:8px;
+    background:var(--surface); border:1px solid var(--line); border-radius:10px; }
+  .doc-attach-preview.active { display:flex; }
+  .doc-attach-preview .doc-icon { flex-shrink:0; width:36px; height:36px; border-radius:8px; background:var(--moss);
+    display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .doc-attach-preview .attach-label { flex:1; font-size:13px; color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .doc-attach-preview .attach-remove { border:none; background:transparent; color:var(--error); font-size:18px;
     cursor:pointer; padding:2px 8px; line-height:1; }
 
   .msg .msg-thumb { width:100%; max-width:220px; border-radius:10px; margin-bottom:8px; display:block; }
@@ -127,7 +144,7 @@
     </div>
   </div>
   <div class="feed" id="feed">
-    <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. 🌱</div>
+    <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. </div>
   </div>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="attach-preview" id="attachPreview">
@@ -135,25 +152,44 @@
     <span class="attach-label">Photo attached — type your question and hit Send</span>
     <button class="attach-remove" id="attachRemoveBtn" type="button" title="Remove photo">×</button>
   </div>
+  <div class="doc-attach-preview" id="docAttachPreview">
+    <div class="doc-icon">📄</div>
+    <span class="attach-label" id="docAttachLabel">document.pdf attached — ask a question and hit Send</span>
+    <button class="attach-remove" id="docAttachRemoveBtn" type="button" title="Remove document">×</button>
+  </div>
   <div class="input-row">
     <textarea id="goal" rows="1" placeholder="Type or speak — e.g. how do I make biryani"></textarea>
     <button class="mic-btn" id="micBtn" type="button" title="Record">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
     </button>
-    <button class="cam-btn" id="camBtn" type="button" title="Add a photo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+    <button class="cam-btn" id="camBtn" type="button" title="Add a photo or document">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </button>
     <div class="cam-menu" id="camMenu">
-      <div style="font-size:12px; color:var(--ink-muted); padding:4px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-        <span>Source: <b id="camMenuSourceLabel" style="color:var(--amber);">Webcam</b></span>
-        <button type="button" id="camMenuSwitchBtn" style="color:var(--moss); font-size:11px; padding:0; border:none; background:transparent; cursor:pointer;">Switch</button>
+      <div class="attach-menu-header">
+        <span>Source: <b id="camMenuSourceLabel">Webcam</b></span>
+        <button type="button" id="camMenuSwitchBtn" class="attach-menu-switch">Switch</button>
       </div>
-      <button type="button" id="camChooseBtn">📁 Choose Photo</button>
-      <button type="button" id="camTakeBtn">📷 Take Photo</button>
-      <button type="button" id="camGuideBtn">🔍 Find it live</button>
+      <button type="button" class="attach-menu-item" id="camChooseBtn">
+        <span class="attach-icon" style="background:var(--amber);">📁</span>
+        <span class="attach-text"><span class="attach-title">Upload Photo</span><span class="attach-sub">Choose an image from your device</span></span>
+      </button>
+      <button type="button" class="attach-menu-item" id="camTakeBtn">
+        <span class="attach-icon" style="background:var(--moss);">📷</span>
+        <span class="attach-text"><span class="attach-title">Take Photo</span><span class="attach-sub">Use your camera right now</span></span>
+      </button>
+      <button type="button" class="attach-menu-item" id="camGuideBtn">
+        <span class="attach-icon" style="background:#2ed573;">🔍</span>
+        <span class="attach-text"><span class="attach-title">Find It Live</span><span class="attach-sub">Point your camera and search</span></span>
+      </button>
+      <button type="button" class="attach-menu-item" id="camDocBtn">
+        <span class="attach-icon" style="background:#ff6b6b;">📄</span>
+        <span class="attach-text"><span class="attach-title">Upload Document</span><span class="attach-sub">A PDF - bank letters, assignments, and more</span></span>
+      </button>
     </div>
     <input type="file" id="camInputLibrary" accept="image/*" style="display:none;">
     <input type="file" id="camInputCamera" accept="image/*" capture="environment" style="display:none;">
+    <input type="file" id="docInput" accept="application/pdf" style="display:none;">
     <button class="send-btn" id="sendBtn" type="button">Send</button>
   </div>
 </div>
@@ -291,6 +327,47 @@
     feedEl.appendChild(div);
     scrollToBottom();
     return div;
+  }
+
+  // Renders a headline + optional detail paragraph (used for document Q&A)
+  function addAnswerBubble(headline, detail) {
+    const div = document.createElement('div');
+    div.className = 'msg assistant';
+    const headlineEl = document.createElement('div');
+    headlineEl.className = 'answer-headline';
+    headlineEl.textContent = headline;
+    div.appendChild(headlineEl);
+    if (detail) {
+      const detailEl = document.createElement('div');
+      detailEl.className = 'answer-detail';
+      detailEl.textContent = detail;
+      div.appendChild(detailEl);
+    }
+    feedEl.appendChild(div);
+    scrollToBottom();
+  }
+
+  // Renders a headline + numbered steps (used for image Q&A) - same visual
+  // language as the goal step-breakdown bubbles, so a photo explanation
+  // reads as separate, scannable points instead of one dense paragraph.
+  function addStepAnswerBubble(headline, steps) {
+    const div = document.createElement('div');
+    div.className = 'msg assistant';
+    const headlineEl = document.createElement('div');
+    headlineEl.className = 'answer-headline';
+    headlineEl.textContent = headline;
+    div.appendChild(headlineEl);
+
+    (steps || []).forEach((stepText, idx) => {
+      const line = document.createElement('div');
+      line.className = 'step-line';
+      line.style.marginTop = idx === 0 ? '10px' : '0';
+      line.innerHTML = `<span class="step-num">${idx + 1}</span><span>${escapeHtml(stepText)}</span>`;
+      div.appendChild(line);
+    });
+
+    feedEl.appendChild(div);
+    scrollToBottom();
   }
 
   function escapeHtml(str) {
@@ -461,7 +538,7 @@
     }
   }
 
-  // --- camera / photo input ---
+  // --- camera / photo / document input ---
   const camBtn = document.getElementById('camBtn');
   const camMenu = document.getElementById('camMenu');
   const camChooseBtn = document.getElementById('camChooseBtn');
@@ -494,6 +571,27 @@
   const ipCameraUrlInput = document.getElementById('ipCameraUrlInput');
   const ipSettingsCancelBtn = document.getElementById('ipSettingsCancelBtn');
   const ipSettingsSaveBtn = document.getElementById('ipSettingsSaveBtn');
+
+  // --- IP camera polling helper ---
+  // Some browsers render multipart/x-mixed-replace streams inconsistently
+  // when loaded into an <img> via JavaScript (even though the same URL
+  // works fine opened directly in a tab). Polling single JPEG frames from
+  // /camera/frame sidesteps that entirely and is reliable everywhere.
+  let ipPollIntervalId = null;
+
+  function startIpImgPolling(imgEl) {
+    stopIpImgPolling(); // clear any existing poll first
+    ipPollIntervalId = setInterval(() => {
+      imgEl.src = `${API}/camera/frame?t=${Date.now()}`;
+    }, 200); // ~5 frames per second, plenty smooth for this use case
+  }
+
+  function stopIpImgPolling() {
+    if (ipPollIntervalId) {
+      clearInterval(ipPollIntervalId);
+      ipPollIntervalId = null;
+    }
+  }
 
   function setCameraSource(source) {
     currentCameraSource = source;
@@ -657,6 +755,7 @@
 
   async function startSnapCapture() {
     if (currentCameraSource === 'webcam') {
+      stopIpImgPolling();
       snapIpImg.style.display = 'none';
       snapIpImg.src = '';
       snapVideo.style.display = 'block';
@@ -678,9 +777,9 @@
       }
       snapVideo.style.display = 'none';
       snapIpImg.style.display = 'block';
-      snapIpImg.src = `${API}/camera/stream?t=${Date.now()}`;
       snapHint.textContent = 'Point your IP Camera, then capture';
       snapOverlay.classList.add('active');
+      startIpImgPolling(snapIpImg);
     }
   }
 
@@ -689,6 +788,7 @@
       snapStream.getTracks().forEach(t => t.stop());
       snapStream = null;
     }
+    stopIpImgPolling();
     snapIpImg.src = '';
     snapOverlay.classList.remove('active');
   }
@@ -743,6 +843,7 @@
     inputEl.value = ''; // reset so choosing the same photo again still fires 'change'
     if (!file) return;
 
+    clearDocumentAttachment(); // a photo and a document don't make sense attached at the same time
     pendingImageFile = file;
     pendingImageUrl = URL.createObjectURL(file);
     attachThumb.src = pendingImageUrl;
@@ -761,11 +862,77 @@
     goalEl.placeholder = "Type or speak — e.g. how do I make biryani";
   }
 
-  // Send button routes to either a normal text message or an image question,
-  // depending on whether a photo is currently attached.
+  // --- document upload (PDF) ---
+  // Unlike a photo, the document stays attached across multiple questions -
+  // the user can keep asking about the same PDF until they remove it or
+  // attach something else.
+  const camDocBtn = document.getElementById('camDocBtn');
+  const docInput = document.getElementById('docInput');
+  const docAttachPreview = document.getElementById('docAttachPreview');
+  const docAttachLabel = document.getElementById('docAttachLabel');
+  const docAttachRemoveBtn = document.getElementById('docAttachRemoveBtn');
+
+  let pendingDocumentId = null;
+  let pendingDocumentName = null;
+
+  camDocBtn.addEventListener('click', () => { camMenu.classList.remove('open'); docInput.click(); });
+
+  docInput.addEventListener('change', async () => {
+    const file = docInput.files[0];
+    docInput.value = ''; // reset so choosing the same file again still fires 'change'
+    if (!file) return;
+
+    clearAttachment(); // a photo and a document don't make sense attached at the same time
+    setStatus('Reading document…');
+    sendBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    try {
+      const res = await fetch(`${API}/upload-document`, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('upload failed');
+      const data = await res.json();
+
+      pendingDocumentId = data.document_id;
+      pendingDocumentName = data.filename;
+      docAttachLabel.textContent = `${data.filename} attached — ask a question and hit Send`;
+      docAttachPreview.classList.add('active');
+      goalEl.placeholder = "Ask something about this document…";
+      goalEl.focus();
+
+      if (data.truncated) {
+        setStatus('Document is quite long - only the first part was used.');
+      } else {
+        setStatus('');
+      }
+    } catch (err) {
+      setStatus('Could not read that document. Is the server running?', true);
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+
+  docAttachRemoveBtn.addEventListener('click', () => clearDocumentAttachment());
+
+  function clearDocumentAttachment() {
+    pendingDocumentId = null;
+    pendingDocumentName = null;
+    docAttachPreview.classList.remove('active');
+    goalEl.placeholder = "Type or speak — e.g. how do I make biryani";
+  }
+
+  // Send button routes to a normal text message, an image question, or a
+  // document question, depending on what (if anything) is currently attached.
   function handleSendClick() {
     const text = goalEl.value.trim();
-    if (pendingImageFile) {
+
+    if (pendingDocumentId) {
+      const question = text || "Can you explain what this document is about?";
+      goalEl.value = '';
+      goalEl.style.height = 'auto';
+      askDocument(question); // document stays attached - user can keep asking
+    } else if (pendingImageFile) {
       const question = text || "What's in this photo?";
       goalEl.value = '';
       goalEl.style.height = 'auto';
@@ -776,6 +943,31 @@
       goalEl.value = '';
       goalEl.style.height = 'auto';
       sendMessage(text);
+    }
+  }
+
+  async function askDocument(question) {
+    addUserBubble(`📄 ${question}`);
+    history.push({ role: "user", content: question });
+    setStatus('Reading through the document…');
+    sendBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API}/ask-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: pendingDocumentId, question }),
+      });
+      if (!res.ok) throw new Error('ask-document failed');
+      const data = await res.json();
+
+      addAnswerBubble(data.headline, data.detail);
+      history.push({ role: "assistant", content: `${data.headline} ${data.detail}`.trim() });
+      setStatus('');
+    } catch (err) {
+      setStatus('Could not answer from the document. Is the server running?', true);
+    } finally {
+      sendBtn.disabled = false;
     }
   }
 
@@ -794,22 +986,8 @@
       if (!res.ok) throw new Error('caption failed');
       const data = await res.json();
 
-      const div = document.createElement('div');
-      div.className = 'msg assistant';
-      const headlineEl = document.createElement('div');
-      headlineEl.className = 'answer-headline';
-      headlineEl.textContent = data.headline;
-      div.appendChild(headlineEl);
-      if (data.detail) {
-        const detailEl = document.createElement('div');
-        detailEl.className = 'answer-detail';
-        detailEl.textContent = data.detail;
-        div.appendChild(detailEl);
-      }
-      feedEl.appendChild(div);
-      scrollToBottom();
-
-      history.push({ role: "assistant", content: `${data.headline} ${data.detail}`.trim() });
+      addStepAnswerBubble(data.headline, data.steps);
+      history.push({ role: "assistant", content: `${data.headline} ${(data.steps || []).join(' ')}`.trim() });
       setStatus('');
     } catch (err) {
       setStatus('Could not process that photo. Is the server running?', true);
@@ -831,6 +1009,7 @@
 
   async function startGuidedSearch() {
     if (currentCameraSource === 'webcam') {
+      stopIpImgPolling();
       liveCamIpImg.style.display = 'none';
       liveCamIpImg.src = '';
       liveCamVideo.style.display = 'block';
@@ -854,11 +1033,11 @@
       }
       liveCamVideo.style.display = 'none';
       liveCamIpImg.style.display = 'block';
-      liveCamIpImg.src = `${API}/camera/stream?t=${Date.now()}`;
       liveCamOverlay.classList.add('active');
       liveCamAnswer.textContent = "IP Camera active. Point your phone at anything and ask a question below.";
       liveCamGoal.value = '';
       liveCamGoal.focus();
+      startIpImgPolling(liveCamIpImg);
     }
   }
 
@@ -867,6 +1046,7 @@
       liveCamStream.getTracks().forEach(t => t.stop());
       liveCamStream = null;
     }
+    stopIpImgPolling();
     liveCamIpImg.src = '';
     liveCamOverlay.classList.remove('active');
     window.speechSynthesis && window.speechSynthesis.cancel();
@@ -909,7 +1089,7 @@
           const res = await fetch(`${API}/caption-image`, { method: 'POST', body: formData });
           if (!res.ok) throw new Error('caption failed');
           const data = await res.json();
-          const fullAnswer = `${data.headline} ${data.detail}`.trim();
+          const fullAnswer = `${data.headline} ${(data.steps || []).join(' ')}`.trim();
           liveCamAnswer.textContent = fullAnswer;
           speak(data.headline);
           history.push({ role: "user", content: question });
@@ -933,7 +1113,7 @@
           liveCamAnswer.textContent = data.error;
           speak("Camera frame not available.");
         } else {
-          const fullAnswer = `${data.headline} ${data.detail}`.trim();
+          const fullAnswer = `${data.headline} ${(data.steps || []).join(' ')}`.trim();
           liveCamAnswer.textContent = fullAnswer;
           speak(data.headline);
           history.push({ role: "user", content: question });

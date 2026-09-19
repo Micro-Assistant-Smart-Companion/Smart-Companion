@@ -3,10 +3,11 @@ import os
 import time
 import asyncio
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
  
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
@@ -19,8 +20,8 @@ from app.models import (
     DetectObjectsResponse,
     CaptionResponse,
     GuidanceResponse,
-    CameraConfig,
-    CameraStatusResponse,
+    CameraConfig, CameraStatusResponse,
+    DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse
 )
 # pyrefly: ignore [missing-import]
 from app.redact import redact_text
@@ -31,37 +32,25 @@ from visual.caption import answer_about_image
 from visual.guide import get_guidance
 from visual.ip_camera import IPCameraStream
 from speech_to_text.speech import transcribe_audio_bytes
+from visual.pdfqa import extract_pages, store_document, answer_question_about_document, prefetch_pending_pages
+
 
 app = FastAPI(title="Smart Companion API")
 
-<<<<<<< HEAD
 CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
 camera = IPCameraStream(CAMERA_URL)
 camera.start()
-
-class CameraConfig(BaseModel):
-    url: str
 
 @app.get("/health")
 def health():
     return {"status": "OK"}
 
-=======
->>>>>>> 697e3509e509b0ed5520d5b1cc2b0757431e0a8a
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-CAMERA_URL = os.getenv("CAMERA_URL", "http://10.238.42.4:8080/video")
-camera = IPCameraStream(CAMERA_URL)
-camera.start()
-
-@app.get("/health")
-def health():
-    return {"status": "OK"}
  
 @app.post("/redact", response_model=RedactOutput)
 def redact_pii(input: TextInput):
@@ -108,6 +97,26 @@ async def guide_search(file: UploadFile = File(...), target: str = Form(...)):
     return get_guidance(image_bytes, safe_target)
 
 # --- IP Camera Endpoints integrated with frontend settings ---
+
+@app.post("/upload-document", response_model=DocumentUploadResponse)
+async def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    file_bytes = await file.read()
+    page_texts, page_count = extract_pages(file_bytes)
+    result = store_document(file.filename, file_bytes, page_texts)
+    result["page_count"] = page_count
+
+    if result["pages_pending_vision"] > 0:
+        # Start reading scanned pages now, in the background, instead of
+        # waiting for a question to trigger it - by the time the user
+        # finishes typing, some or all pages may already be read.
+        background_tasks.add_task(prefetch_pending_pages, result["document_id"])
+
+    return result
+
+@app.post("/ask-document", response_model=DocumentAnswerResponse)
+def ask_document(req: DocumentQuestionRequest):
+    safe_question = redact_text(req.question)
+    return answer_question_about_document(req.document_id, safe_question)
 
 @app.get("/camera/status", response_model=CameraStatusResponse)
 def camera_status():
