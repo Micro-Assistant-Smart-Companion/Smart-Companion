@@ -6,7 +6,7 @@
 <title>Companion — say it, break it down</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #15161d; --surface: #1f2130; --ink: #f2f1f7; --ink-muted: #a8a7bd;
@@ -14,10 +14,10 @@
     --line: #34364a; --error: #ff6b6b;
   }
   * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Comic Neue', 'Comic Sans MS', cursive, sans-serif; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible', sans-serif; }
   body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 40px; }
   .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; height:calc(100vh - 72px); }
-  .mark { font-family:'Comic Neue', cursive; font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
+  .mark { font-family:'Atkinson Hyperlegible', sans-serif; font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
   .feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-bottom:16px; }
   .msg { max-width:85%; padding:14px 16px; border-radius:14px; line-height:1.55; font-size:16px; animation: rise 0.25s ease; }
   @keyframes rise { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
@@ -31,7 +31,7 @@
   .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink);
     background:transparent; border:1.5px solid var(--moss); border-radius:999px; padding:8px 16px; cursor:pointer; }
   .done-btn:hover { background:var(--moss); color:#fff; }
-  .done-note { font-family:'Comic Neue', cursive; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
+  .done-note { font-family:'Atkinson Hyperlegible', sans-serif; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
   .input-row { position:relative; display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
   #goal { flex:1; border:none; background:transparent; outline:none; resize:none; font-family:inherit; font-size:16px;
     color:var(--ink); line-height:1.4; padding:8px 0; min-height:26px; max-height:120px; }
@@ -131,6 +131,7 @@
   <div class="header-row">
     <div class="mark">companion</div>
     <div style="display:flex; align-items:center; gap:6px;">
+      <div id="gamifyBar" style="font-size:12px; color:var(--ink-muted);"></div>
       <div class="source-switcher" id="camSourceSwitcher" title="Switch between Webcam and IP Camera">
         <button type="button" class="source-btn active" id="btnSrcWebcam" data-src="webcam">💻 Webcam</button>
         <button type="button" class="source-btn" id="btnSrcIp" data-src="ipcamera"><span class="cam-dot" id="headerIpDot"></span>📱 IP Camera</button>
@@ -284,11 +285,39 @@
   function addAssistantBubble(steps, isFinal) {
     const div = document.createElement('div');
     div.className = 'msg assistant';
+
+    // A "choices" step is a clarifying question (decision-paralysis handling) -
+    // rendered as tappable buttons instead of a normal step line, and skips
+    // the usual "Done" button since it's not a task step yet.
+    const clarifyStep = steps.find(s => Array.isArray(s.choices) && s.choices.length);
+    if (clarifyStep) {
+      const q = document.createElement('div');
+      q.textContent = clarifyStep.text;
+      q.style.marginBottom = '10px';
+      div.appendChild(q);
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
+      clarifyStep.choices.forEach((choice) => {
+        const cb = document.createElement('button');
+        cb.className = 'done-btn';
+        cb.textContent = choice;
+        cb.onclick = () => {
+          btnRow.querySelectorAll('button').forEach(b => b.disabled = true);
+          sendMessage(`${currentGoal} - ${choice}`);
+        };
+        btnRow.appendChild(cb);
+      });
+      div.appendChild(btnRow);
+      feedEl.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
     steps.forEach((s) => {
       stepCounter += 1;
       const line = document.createElement('div');
       line.className = 'step-line';
-      line.innerHTML = `<span class="step-num">${stepCounter}</span><span>${escapeHtml(s.text ?? '')}</span>`;
+      line.innerHTML = `<span class="step-num">${stepCounter}</span><span>${escapeHtml(s.text ?? '')}${s.time ? ` <i style="opacity:0.6">(${escapeHtml(s.time)})</i>` : ''}</span>`;
       div.appendChild(line);
     });
     if (!isFinal) {
@@ -373,6 +402,8 @@
       completedSteps = steps.map(s => s.text);
       addAssistantBubble(steps, data.is_final);
       if (!data.was_error) history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
+      saveSession();
+      if (data.is_final) celebrateTaskDone();
       setStatus('');
     } catch (err) {
       setStatus("Couldn't reach the companion. Is the server running?", true);
@@ -390,6 +421,9 @@
       btnEl.remove();
       addAssistantBubble(newSteps, data.is_final);
       if (!data.was_error) history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
+      celebrateStep();
+      saveSession();
+      if (data.is_final) { celebrateTaskDone(); localStorage.removeItem(SESSION_KEY); }
     } catch (err) {
       setStatus("Couldn't reach the companion.", true);
       btnEl.disabled = false;
@@ -457,7 +491,7 @@
       if (!res.ok) throw new Error('transcribe failed');
       const data = await res.json();
       setStatus('');
-      if (data.text) { goalEl.value = ''; goalEl.style.height = 'auto'; sendMessage(data.text); }
+      if (data.text) { unlockBadge('voice', 'Voice Explorer'); goalEl.value = ''; goalEl.style.height = 'auto'; sendMessage(data.text); }
       else setStatus("Didn't catch that — try again.", true);
     } catch (err) { setStatus('Could not transcribe that recording.', true); }
   }
@@ -733,6 +767,7 @@
   }
 
   async function askDocument(question) {
+    unlockBadge('doc', 'Bookworm');
     addUserBubble(`📄 ${question}`);
     history.push({ role: "user", content: question });
     setStatus('Reading through the document…');
@@ -752,6 +787,7 @@
   }
 
   async function sendImageMessage(file, imageUrl, question) {
+    unlockBadge('photo', 'Photo Detective');
     addUserBubble(question, imageUrl);
     history.push({ role: "user", content: question });
     setStatus('Looking at the photo…');
@@ -782,6 +818,7 @@
   let liveCamStream = null;
 
   async function startGuidedSearch() {
+    unlockBadge('live', 'Live Explorer');
     if (currentCameraSource === 'webcam') {
       stopIpImgPolling();
       liveCamIpImg.style.display = 'none'; liveCamIpImg.src = '';
@@ -931,6 +968,97 @@
       speak(data.headline);
     } catch (e) {}
   }
+
+
+  // --- GAMIFICATION MODULE ---
+  const GAMIFY_KEY = 'companion_gamify';
+  function loadGamify() {
+    try { return JSON.parse(localStorage.getItem(GAMIFY_KEY)) || defaultGamify(); }
+    catch (e) { return defaultGamify(); }
+  }
+  function defaultGamify() { return { totalSteps: 0, streak: 0, lastActiveDate: null, plantStage: 0, badges: [] }; }
+  function saveGamify(g) { localStorage.setItem(GAMIFY_KEY, JSON.stringify(g)); }
+
+  const PLANT_STAGES = ['🌱', '🌿', '🪴', '🌳', '🌸'];
+  const ENCOURAGEMENTS = ["Nice one!", "You're on a roll!", "Great job!", "Keep it up!", "That's the way!"];
+
+  function celebrateStep() {
+    const g = loadGamify();
+    g.totalSteps += 1;
+    g.plantStage = Math.min(4, Math.floor(g.totalSteps / 5));
+    updateStreak(g);
+    saveGamify(g);
+    showToast(`${ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]} ${PLANT_STAGES[g.plantStage]}`);
+    renderGamifyBar();
+  }
+  function celebrateTaskDone() { showToast("🎉 Task complete — nicely done!", true); }
+
+  function updateStreak(g) {
+    const today = new Date().toDateString();
+    if (g.lastActiveDate === today) return;
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    g.streak = (g.lastActiveDate === yesterday) ? g.streak + 1 : 1;
+    g.lastActiveDate = today;
+  }
+
+  function unlockBadge(name, label) {
+    const g = loadGamify();
+    if (g.badges.includes(name)) return;
+    g.badges.push(name);
+    saveGamify(g);
+    showToast(`🏅 New badge: ${label}`, true);
+  }
+
+  function showToast(msg, big = false) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+      background:${big ? 'var(--amber)' : 'var(--moss)'}; color:#1a1a1a; padding:10px 18px;
+      border-radius:999px; font-family:'Comic Neue',cursive; font-weight:700; font-size:14px;
+      z-index:300; animation:rise 0.3s ease; box-shadow:0 6px 20px rgba(0,0,0,0.4);`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2200);
+  }
+
+  function renderGamifyBar() {
+    const g = loadGamify();
+    const bar = document.getElementById('gamifyBar');
+    if (bar) bar.textContent = `${PLANT_STAGES[g.plantStage]} ${g.totalSteps} steps · 🔥 ${g.streak} day streak`;
+  }
+  renderGamifyBar();
+
+  // --- SESSION RESUME ---
+  const SESSION_KEY = 'companion_session';
+
+  function saveSession() {
+    if (!currentGoal) return;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ currentGoal, completedSteps, stepCounter }));
+  }
+  function checkResumeSession() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SESSION_KEY));
+      if (saved && saved.currentGoal && saved.completedSteps && saved.completedSteps.length) {
+        const div = document.createElement('div');
+        div.className = 'msg assistant';
+        div.innerHTML = `You were working on: <b>${escapeHtml(saved.currentGoal)}</b> (step ${saved.stepCounter}).`;
+        const btn = document.createElement('button');
+        btn.className = 'done-btn';
+        btn.textContent = 'Continue where I left off';
+        btn.onclick = () => {
+          currentGoal = saved.currentGoal;
+          completedSteps = saved.completedSteps;
+          stepCounter = saved.stepCounter;
+          callBackend(currentGoal, false).then(data => {
+            addAssistantBubble(data.steps || [], data.is_final);
+          });
+          btn.remove();
+        };
+        div.appendChild(btn);
+        feedEl.appendChild(div);
+      }
+    } catch (e) {}
+  }
+  checkResumeSession();
 
   setCameraSource(currentCameraSource);
 </script>

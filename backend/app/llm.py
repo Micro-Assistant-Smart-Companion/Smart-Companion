@@ -41,6 +41,8 @@ def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
 
     history_block = ""
     if history:
+        # Only the last 4 turns are sent - older context adds latency without much benefit
+        # for follow-up questions, which are almost always about the most recent reply.
         turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
         history_block = f"""Conversation so far:
 {turns}
@@ -71,7 +73,37 @@ If this is a finite task (like a recipe, a single errand, or anything with a cle
 and it is now naturally complete (e.g. the food is cooked and served, the task is done),
 set "is_final" to true instead of inventing more steps."""
     else:
-        progress = f"Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task."
+        progress = f"""Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task.
+
+IMPORTANT - avoid decision paralysis, for ANY kind of goal (studying,
+applying for a visa, booking something, cooking, cleaning, banking, etc.),
+using exactly ONE of these three approaches:
+
+1. If the goal is already specific enough to act on (e.g. "clean my kitchen",
+   "book a flight to Delhi", "study for my chemistry exam"), skip
+   clarification entirely - just give the normal first steps.
+
+2. If the goal is vague AND you cannot possibly know the real valid options
+   (e.g. "study for my exam" - you don't know what subjects this person has;
+   "apply for a visa" - you don't know which country; "clean the house" -
+   you don't know its layout), respond with exactly ONE step: set
+   "clarify" to true, ask ONE simple open question in "text" (e.g. "Which
+   subjects do you have for this exam?", "Which country's visa?"), and do
+   NOT include a "choices" field - the user will type their own free-text
+   answer, since you cannot guess it. NEVER invent a fixed list here (like
+   guessing "Math, Science, Hindi") - that would be wrong for most users.
+
+3. If the goal is vague BUT you genuinely already know a short, correct set
+   of real options worth offering (e.g. the user already told you their
+   subjects are Physics and Chemistry, and you're asking which to start
+   with), respond with exactly ONE step: set "clarify" to true, and include
+   "choices" (2-4 short options) alongside "text".
+
+In cases 2 and 3, include ONLY that one clarifying step - no other steps -
+and set "is_final" to false."""
+
+    choices_shape = '{{"step": 1, "text": "Which one first?", "clarify": true, "choices": ["Option A", "Option B"]}}'
+    open_shape = '{{"step": 1, "text": "Which subjects do you have for this exam?", "clarify": true}}'
 
     return f"""{history_block}You are a warm, friendly companion for all kinds of users, especially neurodivergent users.
 Talk like a supportive friend, not a manual - encouraging, patient, never robotic or curt.
@@ -90,9 +122,19 @@ Reading level: {reading_level}. Tone: {tone}.
 
 Respond with ONLY raw JSON - no markdown, no code fences, no extra text
 before or after it. Follow this exact shape, with each step as its own
-separate object (never put a JSON array or code block inside a "text" value):
+separate object (never put a JSON array or code block inside a "text" value).
 
-{{"steps": [{{"step": 1, "text": "first point"}}, {{"step": 2, "text": "second point"}}], "is_final": false}}
+Include a "time" field ONLY if this is an ACTION goal - a real-world task
+that actually takes time to do (e.g. "~5 min", "~2 min"). If this is a
+QUESTION or FOLLOW-UP (an explanation, not a task), leave "time" out
+entirely - an explanation does not take "5 minutes" to read, so do not
+invent a duration for it. Include a "choices" field ONLY for a single
+clarifying step as described above - normal steps never have "choices".
+
+Example of a normal step: {{"step": 1, "text": "first point", "time": "~5 min"}}
+Example of a clarifying step (used ALONE, as the only item in "steps"): {choices_shape}
+
+{{"steps": [...one or more step objects as shown above...], "is_final": false}}
 
 Input: "{goal}"
 """
@@ -134,6 +176,7 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
             "is_final": True,
             "was_error": True,  
         }
+
 
     steps = parsed.get("steps", [])
     if len(steps) > max_steps:
