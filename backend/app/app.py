@@ -4,6 +4,7 @@ import time
 import asyncio
 from dotenv import load_dotenv
 from pydantic import BaseModel
+import json
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
  
@@ -85,10 +86,14 @@ async def detect_objects(file: UploadFile = File(...)):
     return {"summary": summary}
 
 @app.post("/caption-image", response_model=CaptionResponse)
-async def caption_image(file: UploadFile = File(...), question: str = Form(...)):
+async def caption_image(file: UploadFile = File(...), question: str = Form(...), history: str = Form(default="[]")):
     image_bytes = await file.read()
     safe_question = redact_text(question)  # in case the question itself contains personal info
-    return answer_about_image(image_bytes, safe_question)
+    try:
+        history_list = json.loads(history)
+    except (ValueError, TypeError):
+        history_list = []
+    return answer_about_image(image_bytes, safe_question, history_list)
 
 @app.post("/guide-search", response_model=GuidanceResponse)
 async def guide_search(file: UploadFile = File(...), target: str = Form(...)):
@@ -160,13 +165,17 @@ def camera_frame():
     )
 
 @app.post("/camera/ask")
-def ask_ip_camera(question: str = Form(...)):
+def ask_ip_camera(question: str = Form(...), history: str = Form(default="[]")):
     frame_bytes = camera.get_latest_jpeg()
     if not frame_bytes:
         return {"error": "Camera frame not available. Please check that your IP Webcam stream is active."}
-    
+ 
     safe_question = redact_text(question)
-    return answer_about_image(frame_bytes, safe_question)
+    try:
+        history_list = json.loads(history)
+    except (ValueError, TypeError):
+        history_list = []
+    return answer_about_image(frame_bytes, safe_question, history_list)
 
 @app.get("/camera/detect-objects", response_model=DetectObjectsResponse)
 def detect_objects_ip_camera():
