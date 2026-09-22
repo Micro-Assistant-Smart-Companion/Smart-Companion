@@ -1,10 +1,10 @@
-# 🧠 Smart Companion (Micro Assistant)
+#  Smart Companion (Micro Assistant)
 
 > A friendly, multi-modal AI companion designed to break down overwhelming tasks into bite-sized steps, answer questions with visual context, and guide users in real-time through Webcams or IP Cameras.
 
 ---
 
-## 🌟 Overview
+##  Overview
 
 **Smart Companion** is an executive-functioning and accessibility assistant built especially for users who experience task paralysis, ADHD, or neurodivergent scanning patterns—or anyone who benefits from structured, patient guidance.
 
@@ -17,9 +17,9 @@ Instead of outputting long, intimidating walls of text, Smart Companion:
 
 ---
 
-## ✨ Key Features
+##  Key Features
 
-### 🎯 1. Micro-Step Task Decomposition
+###  1. Micro-Step Task Decomposition
 - Powered by modern LLMs via the **Groq API**.
 - Adapts to goals ("clean my kitchen", "study for exam") or questions ("explain quantum computing").
 - Maintains conversation history and step progression so tasks continue forward seamlessly.
@@ -30,7 +30,7 @@ Instead of outputting long, intimidating walls of text, Smart Companion:
 - **Accurate Audio Transcription**: High-fidelity speech-to-text powered by Groq's `whisper-large-v3-turbo`.
 - **Spoken Guidance**: Answers and headlines are read aloud via browser Speech Synthesis.
 
-### 🛡️ 3. Privacy-First PII Redaction
+###  3. Privacy-First PII Redaction
 - Evaluates user prompts with **spaCy** (`en_core_web_sm`) named-entity recognition.
 - Automatically strips sensitive entities (e.g. `PERSON`, `ORG`, `GPE`, `LOC`, `DATE`, `TIME`) before sending data to external AI models.
 
@@ -47,7 +47,7 @@ Instead of outputting long, intimidating walls of text, Smart Companion:
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+##  Architecture & Tech Stack
 
 ```
 Smart-Companion/
@@ -81,7 +81,7 @@ Smart-Companion/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### 1. Prerequisites
 - Python 3.10 or higher installed.
@@ -154,7 +154,7 @@ Simply open `frontend/index.html` in your web browser:
 
 ---
 
-## 📱 Using a Smartphone as an IP Camera
+##  Using a Smartphone as an IP Camera
 
 You can turn any Android phone or tablet into an IP camera for Smart Companion:
 
@@ -172,7 +172,7 @@ You can turn any Android phone or tablet into an IP camera for Smart Companion:
 
 ---
 
-## 🔌 API Reference
+##  API Reference
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -191,7 +191,7 @@ You can turn any Android phone or tablet into an IP camera for Smart Companion:
 
 ---
 
-## 💡 Keyboard & Voice Shortcuts
+##  Keyboard & Voice Shortcuts
 
 - **Enter**: Sends your typed goal or question.
 - **Shift + Enter**: Inserts a new line in the input box.
@@ -200,6 +200,6 @@ You can turn any Android phone or tablet into an IP camera for Smart Companion:
 
 ---
 
-## 📄 License
+## License
 
 This project is open source and available under the [MIT License](LICENSE).
