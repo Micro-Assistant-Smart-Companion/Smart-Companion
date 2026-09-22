@@ -41,8 +41,6 @@ def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
 
     history_block = ""
     if history:
-        # Only the last 4 turns are sent - older context adds latency without much benefit
-        # for follow-up questions, which are almost always about the most recent reply.
         turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
         history_block = f"""Conversation so far:
 {turns}
@@ -71,7 +69,12 @@ Give the NEXT {max_steps} steps, continuing forward from here.
 NEVER restart the task from the beginning or repeat earlier stages already listed above.
 If this is a finite task (like a recipe, a single errand, or anything with a clear end point)
 and it is now naturally complete (e.g. the food is cooked and served, the task is done),
-set "is_final" to true instead of inventing more steps."""
+set "is_final" to true instead of inventing more steps.
+Many everyday tasks (booking something, using an app, a short errand) are genuinely
+finished in just a few steps. If you cannot think of a truly NEW, meaningfully
+different next action - and would otherwise just reword or repeat what was
+already listed above - that means the task is actually done: set "is_final" to
+true and return an empty "steps" list, rather than repeating similar content."""
     else:
         progress = f"""Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task.
 
@@ -132,7 +135,8 @@ invent a duration for it. Include a "choices" field ONLY for a single
 clarifying step as described above - normal steps never have "choices".
 
 Example of a normal step: {{"step": 1, "text": "first point", "time": "~5 min"}}
-Example of a clarifying step (used ALONE, as the only item in "steps"): {choices_shape}
+Example of an open clarifying question (no choices - user types freely): {open_shape}
+Example of a choice-based clarifying step (real known options): {choices_shape}
 
 {{"steps": [...one or more step objects as shown above...], "is_final": false}}
 
@@ -174,14 +178,39 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
         parsed = {
             "steps": [{"step": 1, "text": "Sorry, I got a bit stuck there - could you try asking that again?"}],
             "is_final": True,
-            "was_error": True,  
+            "was_error": True,  # tells the frontend not to save this into chat history
         }
-
-
     steps = parsed.get("steps", [])
     if len(steps) > max_steps:
         print(f"[warning] Model returned {len(steps)} steps, expected {max_steps} - trimming")
         parsed["steps"] = steps[:max_steps]
         parsed["is_final"] = False  
+        steps = parsed["steps"]
+
+    if completed_steps and steps and _looks_repetitive(steps, completed_steps):
+        print("[warning] New steps look like a repeat of earlier ones - marking task complete instead")
+        parsed["steps"] = []
+        parsed["is_final"] = True
 
     return parsed
+
+
+def _looks_repetitive(new_steps: list, completed_steps: list, threshold: float = 0.55) -> bool:
+    """Rough word-overlap check: if the new steps share most of their words
+    with the already-completed ones, they're probably a reworded repeat
+    rather than genuinely new content."""
+    completed_words = set(" ".join(completed_steps).lower().split())
+    if not completed_words:
+        return False
+
+    overlaps = []
+    for step in new_steps:
+        step_words = set(str(step.get("text", "")).lower().split())
+        if not step_words:
+            continue
+        overlap = len(step_words & completed_words) / len(step_words)
+        overlaps.append(overlap)
+
+    if not overlaps:
+        return False
+    return (sum(overlaps) / len(overlaps)) >= threshold
