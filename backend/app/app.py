@@ -34,7 +34,7 @@ from visual.guide import get_guidance
 from visual.ip_camera import IPCameraStream
 from speech_to_text.speech import transcribe_audio_bytes
 from visual.pdfqa import extract_pages, store_document, answer_question_about_document, prefetch_pending_pages
-
+from app.router import classify_intent, build_agent_system_note
 
 app = FastAPI(title="Smart Companion API")
 
@@ -69,6 +69,7 @@ def decompose(req: TaskRequest):
         tone=req.tone,
         completed_steps=req.completed_steps,
         history=[t.model_dump() for t in req.history],
+        session_note=req.session_note,
     )
 
     return result
@@ -191,3 +192,8 @@ def guide_search_ip_camera(target: str = Form(...)):
         return {"found": False, "guidance": "Camera frame not available. Check your IP stream."}
     safe_target = redact_text(target)
     return get_guidance(frame_bytes, safe_target)
+
+@app.post("/classify-session")
+def classify_session(input: TextInput):
+    label = classify_intent(input.text)
+    return {"label": label, "note": build_agent_system_note(label)}

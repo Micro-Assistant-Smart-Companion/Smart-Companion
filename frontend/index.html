@@ -6,7 +6,7 @@
 <title>Companion — say it, break it down</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #15161d; --surface: #1f2130; --ink: #f2f1f7; --ink-muted: #a8a7bd;
@@ -14,10 +14,10 @@
     --line: #34364a; --error: #ff6b6b;
   }
   * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Comic Neue', 'Comic Sans MS', cursive, sans-serif; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif; }
   body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 40px; }
   .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; height:calc(100vh - 72px); }
-  .mark { font-family:'Comic Neue', cursive; font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
+  .mark { font-weight:700; font-size:20px; color:var(--amber); margin-bottom:20px; }
   .feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-bottom:16px; }
   .msg { max-width:85%; padding:14px 16px; border-radius:14px; line-height:1.55; font-size:16px; animation: rise 0.25s ease; }
   @keyframes rise { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
@@ -31,7 +31,7 @@
   .done-btn { margin-top:10px; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink);
     background:transparent; border:1.5px solid var(--moss); border-radius:999px; padding:8px 16px; cursor:pointer; }
   .done-btn:hover { background:var(--moss); color:#fff; }
-  .done-note { font-family:'Comic Neue', cursive; font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
+  .done-note { font-weight:700; font-size:16px; color:var(--amber); margin-top:8px; }
   .input-row { position:relative; display:flex; align-items:flex-end; gap:12px; border-top:2px solid var(--line); padding-top:12px; }
   #goal { flex:1; border:none; background:transparent; outline:none; resize:none; font-family:inherit; font-size:16px;
     color:var(--ink); line-height:1.4; padding:8px 0; min-height:26px; max-height:120px; }
@@ -124,11 +124,29 @@
   .settings-modal.active { display:flex; }
   .settings-box { background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:440px; width:100%; padding:22px; box-shadow:0 12px 36px rgba(0,0,0,0.5); }
   .settings-title { font-size:17px; font-weight:700; color:var(--amber); }
+  .sidebar-toggle { background:transparent; border:none; font-size:18px; cursor:pointer; padding:6px; border-radius:8px; color:var(--ink); }
+  .sidebar-toggle:hover { background:var(--surface); }
+  .sidebar-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:299; }
+  .sidebar-backdrop.open { display:block; }
+  .sidebar { position:fixed; top:0; left:0; height:100%; width:250px; background:var(--surface); border-right:1px solid var(--line);
+    transform:translateX(-100%); transition:transform .2s ease; z-index:300; padding:16px; overflow-y:auto; box-sizing:border-box; }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-title { font-weight:700; color:var(--amber); margin-bottom:10px; }
+  .sidebar-item { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--ink);
+    padding:10px 12px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:14px; margin-bottom:4px; text-transform:capitalize; }
+  .sidebar-item:hover { background:var(--line); }
+  .sidebar-item.active { background:var(--moss); color:#fff; }
 </style>
 </head>
 <body>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-title">Sessions</div>
+  <div id="sessionList"></div>
+</div>
 <div class="wrap">
   <div class="header-row">
+    <button type="button" class="sidebar-toggle" id="sidebarToggleBtn" title="Sessions">☰</button>
     <div class="mark">companion</div>
     <div style="display:flex; align-items:center; gap:6px;">
       <div class="source-switcher" id="camSourceSwitcher" title="Switch between Webcam and IP Camera">
@@ -252,6 +270,98 @@
   let currentGoal = null;
   let completedSteps = [];
   let stepCounter = 0;
+
+  // --- multi-session sidebar (by topic, via /classify-session) ---
+  const SESSIONS_KEY = 'companion_sessions';
+  const initialFeedHTML = feedEl.innerHTML;
+  let sessions = { general: { history: [], completedSteps: [], stepCounter: 0, currentGoal: null, feedHTML: initialFeedHTML, name: 'General', sessionNote: '' } };
+  let currentLabel = 'general';
+  let currentSessionNote = '';
+
+  function persistSessions() {
+    try { localStorage.setItem(SESSIONS_KEY, JSON.stringify({ sessions, currentLabel })); } catch (e) {}
+  }
+
+  (function loadSessions() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SESSIONS_KEY));
+      if (saved && saved.sessions && saved.sessions.general) {
+        sessions = saved.sessions;
+        currentLabel = saved.currentLabel || 'general';
+        const s = sessions[currentLabel] || sessions.general;
+        history = s.history; completedSteps = s.completedSteps; stepCounter = s.stepCounter; currentGoal = s.currentGoal;
+        currentSessionNote = s.sessionNote || '';
+        feedEl.innerHTML = s.feedHTML;
+      }
+    } catch (e) {}
+  })();
+
+  const sidebarEl = document.getElementById('sidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+  function toggleSidebar(force) {
+    const open = force !== undefined ? force : !sidebarEl.classList.contains('open');
+    sidebarEl.classList.toggle('open', open);
+    sidebarBackdrop.classList.toggle('open', open);
+  }
+  document.getElementById('sidebarToggleBtn').addEventListener('click', () => toggleSidebar());
+  sidebarBackdrop.addEventListener('click', () => toggleSidebar(false));
+
+  function renderSidebar() {
+    const list = document.getElementById('sessionList');
+    list.innerHTML = '';
+    Object.keys(sessions).forEach(label => {
+      const btn = document.createElement('button');
+      btn.className = 'sidebar-item' + (label === currentLabel ? ' active' : '');
+      btn.textContent = sessions[label].name;
+      btn.onclick = () => switchSession(label);
+      list.appendChild(btn);
+    });
+  }
+
+  function snapshotCurrentSession() {
+    sessions[currentLabel] = { history, completedSteps, stepCounter, currentGoal, feedHTML: feedEl.innerHTML, name: sessions[currentLabel].name, sessionNote: currentSessionNote };
+    persistSessions();
+  }
+
+  function switchSession(label) {
+    if (label !== currentLabel) {
+      snapshotCurrentSession();
+      const s = sessions[label];
+      history = s.history; completedSteps = s.completedSteps; stepCounter = s.stepCounter; currentGoal = s.currentGoal;
+      currentSessionNote = s.sessionNote || '';
+      feedEl.innerHTML = s.feedHTML;
+      currentLabel = label;
+      renderSidebar();
+      persistSessions();
+      scrollToBottom();
+    }
+    toggleSidebar(false);
+  }
+
+  async function classifyAndSwitch(text) {
+    let label = currentLabel;
+    let note = '';
+    try {
+      const res = await fetch(`${API}/classify-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+      if (res.ok) { const d = await res.json(); label = d.label || currentLabel; note = d.note || ''; console.log('classify-session label:', label, '| current:', currentLabel); }
+      else console.error('classify-session failed:', res.status, await res.text());
+    } catch (e) { console.error('classify-session error:', e); return; }
+
+    if (label === currentLabel) return;
+    snapshotCurrentSession();
+    if (!sessions[label]) {
+      sessions[label] = { history: [], completedSteps: [], stepCounter: 0, currentGoal: null, feedHTML: initialFeedHTML, name: label.charAt(0).toUpperCase() + label.slice(1), sessionNote: note };
+    }
+    const s = sessions[label];
+    history = s.history; completedSteps = s.completedSteps; stepCounter = s.stepCounter; currentGoal = s.currentGoal;
+    currentSessionNote = s.sessionNote || '';
+    feedEl.innerHTML = s.feedHTML;
+    currentLabel = label;
+    renderSidebar();
+    persistSessions();
+  }
+  renderSidebar();
   let awaitingClarification = false; // true right after an open-ended clarifying question
   let isRecording = false, mediaRecorder, chunks = [];
 
@@ -389,7 +499,7 @@
     const res = await fetch(`${API}/decompose-task`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal, reading_level: "simple", max_steps: 3, tone: "encouraging", completed_steps: completedSteps, history }),
+      body: JSON.stringify({ goal, reading_level: "simple", max_steps: 3, tone: "encouraging", completed_steps: completedSteps, history, session_note: currentSessionNote }),
     });
     if (!res.ok) throw new Error(`Server responded with ${res.status}`);
     return res.json();
@@ -397,6 +507,7 @@
 
   async function sendMessage(text) {
     if (!text.trim()) return;
+    await classifyAndSwitch(text); // may switch to/create a session by topic before this message is added
     addUserBubble(text);
     history.push({ role: "user", content: text });
     currentGoal = text;
@@ -409,7 +520,7 @@
       completedSteps = steps.map(s => s.text);
       addAssistantBubble(steps, data.is_final);
       if (!data.was_error) history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
-      saveSession();
+      snapshotCurrentSession();
       if (data.is_final) celebrateTaskDone();
       setStatus('');
     } catch (err) {
@@ -429,8 +540,8 @@
       addAssistantBubble(newSteps, data.is_final);
       if (!data.was_error) history.push({ role: "assistant", content: newSteps.map(s => s.text).join(' ') });
       celebrateStep();
-      saveSession();
-      if (data.is_final) { celebrateTaskDone(); localStorage.removeItem(SESSION_KEY); }
+      snapshotCurrentSession();
+      if (data.is_final) celebrateTaskDone();
     } catch (err) {
       setStatus("Couldn't reach the companion.", true);
       btnEl.disabled = false;
@@ -1044,7 +1155,7 @@
     t.textContent = msg;
     t.style.cssText = `position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
       background:${big ? 'var(--amber)' : 'var(--moss)'}; color:#1a1a1a; padding:10px 18px;
-      border-radius:999px; font-family:'Comic Neue',cursive; font-weight:700; font-size:14px;
+      border-radius:999px; font-weight:700; font-size:14px;
       z-index:300; animation:rise 0.3s ease; box-shadow:0 6px 20px rgba(0,0,0,0.4);`;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2200);
@@ -1056,39 +1167,6 @@
     if (bar) bar.textContent = `${PLANT_STAGES[g.plantStage]} ${g.totalSteps} steps · 🔥 ${g.streak} day streak`;
   }
   renderGamifyBar();
-
-  // --- SESSION RESUME ---
-  const SESSION_KEY = 'companion_session';
-
-  function saveSession() {
-    if (!currentGoal) return;
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ currentGoal, completedSteps, stepCounter }));
-  }
-  function checkResumeSession() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(SESSION_KEY));
-      if (saved && saved.currentGoal && saved.completedSteps && saved.completedSteps.length) {
-        const div = document.createElement('div');
-        div.className = 'msg assistant';
-        div.innerHTML = `You were working on: <b>${escapeHtml(saved.currentGoal)}</b> (step ${saved.stepCounter}).`;
-        const btn = document.createElement('button');
-        btn.className = 'done-btn';
-        btn.textContent = 'Continue where I left off';
-        btn.onclick = () => {
-          currentGoal = saved.currentGoal;
-          completedSteps = saved.completedSteps;
-          stepCounter = saved.stepCounter;
-          callBackend(currentGoal, false).then(data => {
-            addAssistantBubble(data.steps || [], data.is_final);
-          });
-          btn.remove();
-        };
-        div.appendChild(btn);
-        feedEl.appendChild(div);
-      }
-    } catch (e) {}
-  }
-  checkResumeSession();
 
   setCameraSource(currentCameraSource);
 </script>

@@ -36,8 +36,10 @@ def extract_json(raw_text: str):
 
 
 def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
-                  completed_steps: list, history: list = None) -> str:
+                  completed_steps: list, history: list = None, session_note: str = "") -> str:
     history = history or []
+
+    note_block = f"IMPORTANT - follow this constraint strictly: {session_note}\n\n" if session_note else ""
 
     history_block = ""
     if history:
@@ -159,9 +161,9 @@ def _call_model(prompt: str):
 
 def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
                     tone: str = "encouraging", completed_steps: list = None,
-                    history: list = None) -> dict:
+                    history: list = None, session_note: str = "") -> dict:
     completed_steps = completed_steps or []
-    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history)
+    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history, session_note)
 
     raw_text, elapsed = _call_model(prompt)
     parsed = extract_json(raw_text)

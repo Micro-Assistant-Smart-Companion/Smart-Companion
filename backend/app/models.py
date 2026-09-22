@@ -21,6 +21,7 @@ class TaskRequest(BaseModel):
     tone: str = "encouraging"
     completed_steps: list = []
     history: list[ChatTurn] = []
+    session_note: str = ""
 
 
 class TaskResponse(BaseModel):
