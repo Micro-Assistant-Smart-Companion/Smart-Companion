@@ -53,7 +53,9 @@ Instead of outputting long, intimidating walls of text, Smart Companion:
 Smart-Companion/
 │
 ├── frontend/
-│   └── index.html               # Responsive single-page application (Vanilla HTML5 / CSS3 / JS)
+│   ├── index.html               # Main application shell (HTML5)
+│   ├── style.css                # Styling, themes, and animations (CSS3)
+│   └── app.js                   # Application logic, audio, camera & gamification (ES6+ JS)
 │
 └── backend/
     ├── .env                     # Environment variables (API keys & configuration)
