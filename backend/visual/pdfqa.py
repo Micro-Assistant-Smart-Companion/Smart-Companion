@@ -4,8 +4,9 @@ import time
 import uuid
 import base64
 import threading
-import fitz  # PyMuPDF
+import pymupdf  # PyMuPDF
 from groq import Groq
+from visual.semantic_search import find_relevant_pages
 
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
