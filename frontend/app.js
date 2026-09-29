@@ -50,12 +50,58 @@ function renderSidebar() {
   const list = document.getElementById('sessionList');
   list.innerHTML = '';
   Object.keys(sessions).forEach(label => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:2px;';
+
     const btn = document.createElement('button');
     btn.className = 'sidebar-item' + (label === currentLabel ? ' active' : '');
+    btn.style.flex = '1';
     btn.textContent = sessions[label].name;
     btn.onclick = () => switchSession(label);
-    list.appendChild(btn);
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '🗑';
+    delBtn.title = 'Delete this chat';
+    delBtn.style.cssText = 'background:transparent;border:none;color:var(--ink-muted);cursor:pointer;padding:6px 8px;font-size:13px;border-radius:6px;';
+    delBtn.onmouseenter = () => delBtn.style.background = 'var(--line)';
+    delBtn.onmouseleave = () => delBtn.style.background = 'transparent';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteSession(label); };
+
+    row.appendChild(btn);
+    row.appendChild(delBtn);
+    list.appendChild(row);
   });
+}
+
+function deleteSession(label) {
+  if (!confirm(`Delete "${sessions[label].name}" and its whole chat history? This can't be undone.`)) return;
+
+  delete sessions[label];
+  if (Object.keys(sessions).length === 0) {
+    sessions.general = { history: [], completedSteps: [], stepCounter: 0, currentGoal: null, feedHTML: initialFeedHTML, name: 'General', sessionNote: '' };
+  }
+
+  if (label === currentLabel) {
+    const nextLabel = sessions.general ? 'general' : Object.keys(sessions)[0];
+    const s = sessions[nextLabel];
+    history = s.history; completedSteps = s.completedSteps; stepCounter = s.stepCounter; currentGoal = s.currentGoal;
+    currentSessionNote = s.sessionNote || '';
+    feedEl.innerHTML = s.feedHTML;
+    currentLabel = nextLabel;
+  }
+
+  renderSidebar();
+  persistSessions();
+}
+
+function clearAllSessions() {
+  if (!confirm('Delete ALL chats and clear saved memory? This cannot be undone.')) return;
+  localStorage.removeItem(SESSIONS_KEY);
+  sessions = { general: { history: [], completedSteps: [], stepCounter: 0, currentGoal: null, feedHTML: initialFeedHTML, name: 'General', sessionNote: '' } };
+  currentLabel = 'general';
+  history = []; completedSteps = []; stepCounter = 0; currentGoal = null; currentSessionNote = '';
+  feedEl.innerHTML = initialFeedHTML;
+  renderSidebar();
 }
 
 function snapshotCurrentSession() {
@@ -100,6 +146,7 @@ async function classifyAndSwitch(text) {
   renderSidebar();
   persistSessions();
 }
+document.getElementById('clearAllBtn').addEventListener('click', clearAllSessions);
 renderSidebar();
 let awaitingClarification = false; // true right after an open-ended clarifying question
 let isRecording = false, mediaRecorder, chunks = [];
@@ -135,9 +182,6 @@ function addAssistantBubble(steps, isFinal) {
   const div = document.createElement('div');
   div.className = 'msg assistant';
 
-  // A "choices" step is a clarifying question (decision-paralysis handling) -
-  // rendered as tappable buttons instead of a normal step line, and skips
-  // the usual "Done" button since it's not a task step yet.
   const clarifyStep = steps.find(s => s.clarify);
   if (clarifyStep) {
     const q = document.createElement('div');
@@ -160,7 +204,6 @@ function addAssistantBubble(steps, isFinal) {
       });
       div.appendChild(btnRow);
     } else {
-      // Open-ended clarifying question - user types their own answer in the main box.
       awaitingClarification = true;
     }
     feedEl.appendChild(div);
@@ -193,7 +236,6 @@ function addAssistantBubble(steps, isFinal) {
   return div;
 }
 
-// Renders headline + steps[] (caption.py shape) or headline + detail string (pdfqa.py shape)
 function addAnswerBubble(headline, stepsOrDetail) {
   const div = document.createElement('div');
   div.className = 'msg assistant';
@@ -246,7 +288,7 @@ async function callBackend(goal, resetTask) {
 
 async function sendMessage(text) {
   if (!text.trim()) return;
-  await classifyAndSwitch(text); // may switch to/create a session by topic before this message is added
+  await classifyAndSwitch(text);
   addUserBubble(text);
   history.push({ role: "user", content: text });
   currentGoal = text;
@@ -260,6 +302,7 @@ async function sendMessage(text) {
     addAssistantBubble(steps, data.is_final);
     if (!data.was_error) history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
     snapshotCurrentSession();
+    maybeShowNearbyHealthcare();
     if (data.is_final) celebrateTaskDone();
     setStatus('');
   } catch (err) {
@@ -293,6 +336,98 @@ goalEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
 });
 
+const INDIA_HEALTH_HELPLINES = [
+  { name: "National Health Helpline", phone: "104" },
+  { name: "Ambulance", phone: "108" },
+  { name: "Ask your local ASHA worker or nearest Primary Health Centre (PHC)", phone: null },
+];
+
+function maybeShowNearbyHealthcare() {
+  if (currentLabel !== 'medical') return;
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.innerHTML = '<b>Want nearby doctor/clinic listings?</b>';
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;';
+
+  const hereBtn = document.createElement('button');
+  hereBtn.className = 'done-btn';
+  hereBtn.textContent = '📍 Search near me';
+  hereBtn.onclick = () => { btnRow.remove(); searchNearbyByGeolocation(); };
+
+  const elsewhereBtn = document.createElement('button');
+  elsewhereBtn.className = 'done-btn';
+  elsewhereBtn.textContent = '🔍 Search a specific place';
+  elsewhereBtn.onclick = () => { btnRow.remove(); showPlaceInput(div); };
+
+  btnRow.appendChild(hereBtn);
+  btnRow.appendChild(elsewhereBtn);
+  div.appendChild(btnRow);
+  feedEl.appendChild(div);
+  scrollToBottom();
+}
+
+function searchNearbyByGeolocation() {
+  if (!navigator.geolocation) { renderNearbyCard([]); return; }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => fetchAndRenderNearby(pos.coords.latitude, pos.coords.longitude),
+    () => renderNearbyCard([]),
+    { timeout: 8000 }
+  );
+}
+
+function showPlaceInput(parentDiv) {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:8px; margin-top:8px;';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'e.g. Park Street, Kolkata';
+  input.style.cssText = 'flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit;';
+  const goBtn = document.createElement('button');
+  goBtn.className = 'done-btn';
+  goBtn.textContent = 'Search';
+  goBtn.onclick = async () => {
+    const place = input.value.trim();
+    if (!place) return;
+    row.remove();
+    setStatus('Looking up that place…');
+    try {
+      const res = await fetch(`${API}/directory/geocode?place=${encodeURIComponent(place)}`);
+      const data = await res.json();
+      setStatus('');
+      if (!data.found) { renderNearbyCard([]); return; }
+      await fetchAndRenderNearby(data.lat, data.lon);
+    } catch (e) { setStatus('Could not look up that place.', true); }
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
+  row.appendChild(input); row.appendChild(goBtn);
+  parentDiv.appendChild(row);
+}
+
+async function fetchAndRenderNearby(lat, lon) {
+  try {
+    const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=10`);
+    const data = await res.json();
+    renderNearbyCard(data.doctors || []);
+  } catch (e) { renderNearbyCard([]); }
+}
+
+function renderNearbyCard(doctors) {
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  let html = '<b>Nearby help</b><br>';
+  if (doctors.length) {
+    doctors.forEach(d => {
+      html += `${escapeHtml(d.name)} (${escapeHtml(d.specialty)})${d.distance_km ? ` - ${d.distance_km} km` : ''}${d.phone ? ` - ${escapeHtml(d.phone)}` : ''}<br>`;
+    });
+  } else {
+    html += "Couldn't find listed facilities close by - here's who to contact instead:<br>";
+    INDIA_HEALTH_HELPLINES.forEach(h => { html += `${escapeHtml(h.name)}${h.phone ? `: ${h.phone}` : ''}<br>`; });
+  }
+  div.innerHTML = html;
+  feedEl.appendChild(div);
+  scrollToBottom();
+}
 const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let liveRecognition = null;
 
@@ -715,7 +850,6 @@ function stopLiveCam() {
 }
 liveCamCloseBtn.addEventListener('click', stopLiveCam);
 
-// Voices load asynchronously in most browsers - cache them once ready.
 let cachedVoices = [];
 function refreshVoices() { cachedVoices = window.speechSynthesis.getVoices(); }
 if (window.speechSynthesis) {

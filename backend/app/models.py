@@ -76,3 +76,7 @@ class DocumentQuestionRequest(BaseModel):
 class DocumentAnswerResponse(BaseModel):
     headline: str
     detail: str = ""
+    
+class NearbyRequest(BaseModel):
+    lat: float
+    lng: float

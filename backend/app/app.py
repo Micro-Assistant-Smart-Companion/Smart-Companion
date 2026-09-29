@@ -22,7 +22,7 @@ from app.models import (
     CaptionResponse,
     GuidanceResponse,
     CameraConfig, CameraStatusResponse,
-    DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse
+    DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse, NearbyRequest
 )
 # pyrefly: ignore [missing-import]
 from app.redact import redact_text
@@ -35,8 +35,13 @@ from visual.ip_camera import IPCameraStream
 from speech_to_text.speech import transcribe_audio_bytes
 from visual.pdfqa import extract_pages, store_document, answer_question_about_document, prefetch_pending_pages
 from app.router import classify_intent, build_agent_system_note
+from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
+from app.doctor_directory import router as directory_router, init_db
 
 app = FastAPI(title="Smart Companion API")
+
+init_db()
+app.include_router(directory_router)
 
 CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
 camera = IPCameraStream(CAMERA_URL)
@@ -197,3 +202,8 @@ def guide_search_ip_camera(target: str = Form(...)):
 def classify_session(input: TextInput):
     label = classify_intent(input.text)
     return {"label": label, "note": build_agent_system_note(label)}
+
+@app.post("/nearby-healthcare")
+def nearby_healthcare(req: NearbyRequest):
+    results = find_nearby_healthcare(req.lat, req.lng)
+    return {"results": results, "helplines": INDIA_HEALTH_HELPLINES}
