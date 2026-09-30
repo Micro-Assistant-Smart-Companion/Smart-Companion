@@ -16,6 +16,7 @@
   <div id="sessionList"></div>
   <button type="button" id="clearAllBtn" style="margin-top:16px; width:100%; text-align:left; background:transparent; border:1px solid var(--line); color:var(--ink-muted); padding:8px 10px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px;">🗑 Clear all chats</button>
 </div>
+<button type="button" id="healthLogBtn" style="margin-top:8px; width:100%; text-align:left; background:transparent; border:1px solid var(--line); color:var(--ink-muted); padding:8px 10px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px;">📋 My Health Log</button>
 <div class="wrap">
   <div class="header-row">
     <button type="button" class="sidebar-toggle" id="sidebarToggleBtn" title="Your Agents">☰</button>
@@ -129,7 +130,10 @@
     </div>
   </div>
 </div>
-
+<button id="sosBtn" type="button" title="Emergency" style="position:fixed; top:14px; right:14px; z-index:250; background:var(--error); color:#fff; border:none; border-radius:50%; width:44px; height:44px; font-size:18px; cursor:pointer; box-shadow:0 4px 14px rgba(255,107,107,0.5);">🆘</button>
+<div style="position:fixed; bottom:2px; left:0; right:0; text-align:center; font-size:10px; color:var(--ink-muted); opacity:0.5; pointer-events:none; z-index:1;">
+  Doctor listings data © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:inherit; pointer-events:auto;">OpenStreetMap</a> contributors
+</div>
 <script src="app.js"></script>
 </body>
 </html>

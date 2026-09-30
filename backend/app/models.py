@@ -28,6 +28,7 @@ class TaskResponse(BaseModel):
     steps: list
     is_final: bool = False
     was_error: bool = False
+    is_emergency: bool = False
 
 
 class TranscribeResponse(BaseModel):

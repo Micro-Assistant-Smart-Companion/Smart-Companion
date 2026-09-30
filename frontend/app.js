@@ -231,9 +231,24 @@ function addAssistantBubble(steps, isFinal) {
     note.textContent = "That's everything — nicely done!";
     div.appendChild(note);
   }
+  addSpeakButton(div, steps.map(s => s.text ?? '').join('. '));
   feedEl.appendChild(div);
   scrollToBottom();
   return div;
+}
+
+// Reusable "read aloud" button - works on any bubble, reuses the same
+// speak()/voice-picking already built for the live camera feature.
+function addSpeakButton(div, text) {
+  if (!text || !text.trim() || !window.speechSynthesis) return;
+  const btn = document.createElement('button');
+  btn.textContent = '🔊';
+  btn.title = 'Read aloud';
+  btn.style.cssText = 'background:transparent; border:none; cursor:pointer; font-size:14px; margin-top:6px; padding:2px 6px; border-radius:6px; color:var(--ink-muted);';
+  btn.onmouseenter = () => btn.style.background = 'var(--line)';
+  btn.onmouseleave = () => btn.style.background = 'transparent';
+  btn.onclick = (e) => { e.stopPropagation(); speak(text); };
+  div.appendChild(btn);
 }
 
 function addAnswerBubble(headline, stepsOrDetail) {
@@ -260,6 +275,7 @@ function addAnswerBubble(headline, stepsOrDetail) {
     detailEl.textContent = stepsOrDetail;
     div.appendChild(detailEl);
   }
+  addSpeakButton(div, flattenAnswer(headline, stepsOrDetail));
   feedEl.appendChild(div);
   scrollToBottom();
 }
@@ -296,13 +312,14 @@ async function sendMessage(text) {
   setStatus('Thinking…');
   sendBtn.disabled = true;
   try {
-    const data = await callBackend(text, true);
+    const enrichedGoal = (currentLabel === 'medical') ? `${text} ${recentHealthLogSummary()}`.trim() : text;
+    const data = await callBackend(enrichedGoal, true);
     const steps = data.steps || [];
     completedSteps = steps.map(s => s.text);
     addAssistantBubble(steps, data.is_final);
     if (!data.was_error) history.push({ role: "assistant", content: steps.map(s => s.text).join(' ') });
     snapshotCurrentSession();
-    maybeShowNearbyHealthcare();
+    if (data.is_emergency) { showEmergencyPanel(); } else { maybeShowNearbyHealthcare(); }
     if (data.is_final) celebrateTaskDone();
     setStatus('');
   } catch (err) {
@@ -1042,3 +1059,123 @@ function renderGamifyBar() {
 renderGamifyBar();
 
 setCameraSource(currentCameraSource);
+
+// --- EMERGENCY / SOS ---
+const sosBtnEl = document.getElementById('sosBtn');
+if (sosBtnEl) sosBtnEl.addEventListener('click', showEmergencyPanel);
+
+function showEmergencyPanel() {
+  const overlay = document.createElement('div');
+  overlay.id = 'emergencyOverlay';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:400; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;';
+
+  overlay.innerHTML = `
+    <div style="font-size:40px; margin-bottom:10px;">🆘</div>
+    <div style="color:#fff; font-size:22px; font-weight:700; margin-bottom:16px;">Emergency Help</div>
+    <a href="tel:108" style="display:block; width:100%; max-width:320px; background:var(--error); color:#fff; padding:14px; border-radius:12px; font-weight:700; font-size:18px; text-decoration:none; margin-bottom:10px;">📞 Call Ambulance - 108</a>
+    <a href="tel:104" style="display:block; width:100%; max-width:320px; background:var(--amber); color:#1a1a1a; padding:14px; border-radius:12px; font-weight:700; font-size:18px; text-decoration:none; margin-bottom:16px;">📞 Health Helpline - 104</a>
+    <div id="sosNearestHospital" style="color:var(--ink-muted); font-size:14px; margin-bottom:16px; max-width:320px;">Finding nearest listed hospital…</div>
+    <button id="sosCloseBtn" style="background:transparent; border:1px solid var(--line); color:#fff; padding:10px 24px; border-radius:999px; cursor:pointer;">Close</button>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#sosCloseBtn').onclick = () => overlay.remove();
+
+  const box = overlay.querySelector('#sosNearestHospital');
+  if (!navigator.geolocation) { box.textContent = ''; return; }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const res = await fetch(`${API}/directory/search?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&radius_km=20&limit=1`);
+      const data = await res.json();
+      if (data.doctors && data.doctors.length) {
+        const h = data.doctors[0];
+        const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
+        box.innerHTML = `Nearest listed facility: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
+          (firstPhone ? ` - <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--amber);">${escapeHtml(firstPhone)}</a>` : '');
+      } else {
+        box.textContent = "No listed facility found nearby - use the numbers above.";
+      }
+    } catch (e) {
+      box.textContent = "Couldn't check nearby facilities - use the numbers above.";
+    }
+  }, () => { box.textContent = "Location unavailable - use the numbers above."; }, { timeout: 8000 });
+}
+
+// --- HEALTH LOG (private, local only - never sent to any server as a
+// record; only a short recent summary gets included in medical questions
+// so the AI can reference the user's own numbers) ---
+const HEALTH_LOG_KEY = 'companion_health_log';
+
+function loadHealthLog() {
+  try { return JSON.parse(localStorage.getItem(HEALTH_LOG_KEY)) || []; }
+  catch (e) { return []; }
+}
+function saveHealthLog(entries) { localStorage.setItem(HEALTH_LOG_KEY, JSON.stringify(entries)); }
+
+function addHealthLogEntry(type, value, note) {
+  const entries = loadHealthLog();
+  entries.unshift({ id: Date.now(), type, value, note, timestamp: new Date().toISOString() });
+  saveHealthLog(entries);
+}
+
+function recentHealthLogSummary(limit = 5) {
+  const entries = loadHealthLog().slice(0, limit);
+  if (!entries.length) return '';
+  const parts = entries.map(e => {
+    const d = new Date(e.timestamp).toLocaleDateString();
+    return `${e.type}: ${e.value}${e.note ? ` (${e.note})` : ''} on ${d}`;
+  });
+  return `Recent health log entries: ${parts.join('; ')}.`;
+}
+
+const healthLogBtnEl = document.getElementById('healthLogBtn');
+if (healthLogBtnEl) healthLogBtnEl.addEventListener('click', showHealthLogPanel);
+
+function showHealthLogPanel() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:400; display:flex; align-items:center; justify-content:center; padding:20px;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:420px; width:100%; padding:20px; max-height:80vh; overflow-y:auto;';
+
+  box.innerHTML = `
+    <div style="font-size:17px; font-weight:700; color:var(--amber); margin-bottom:12px;">📋 My Health Log</div>
+    <div style="display:flex; gap:6px; margin-bottom:8px;">
+      <input id="hlType" placeholder="Type (e.g. Glucose, BP, Mood)" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:13px;">
+      <input id="hlValue" placeholder="Value" style="width:90px; padding:8px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:13px;">
+    </div>
+    <input id="hlNote" placeholder="Note (optional)" style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:13px; margin-bottom:8px;">
+    <button id="hlAddBtn" class="done-btn" style="width:100%; margin-bottom:16px;">+ Add entry</button>
+    <div id="hlList"></div>
+    <button id="hlCloseBtn" style="margin-top:14px; background:transparent; border:1px solid var(--line); color:var(--ink); padding:8px 20px; border-radius:999px; cursor:pointer;">Close</button>
+  `;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  function renderList() {
+    const entries = loadHealthLog();
+    const list = box.querySelector('#hlList');
+    if (!entries.length) { list.innerHTML = '<div style="color:var(--ink-muted); font-size:13px;">No entries yet.</div>'; return; }
+    list.innerHTML = entries.slice(0, 20).map(e => {
+      const d = new Date(e.timestamp).toLocaleDateString();
+      return `<div style="padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;">
+        <b>${escapeHtml(e.type)}</b>: ${escapeHtml(String(e.value))} ${e.note ? `— ${escapeHtml(e.note)}` : ''}
+        <div style="color:var(--ink-muted); font-size:11px;">${d}</div>
+      </div>`;
+    }).join('');
+  }
+  renderList();
+
+  box.querySelector('#hlAddBtn').onclick = () => {
+    const type = box.querySelector('#hlType').value.trim();
+    const value = box.querySelector('#hlValue').value.trim();
+    const note = box.querySelector('#hlNote').value.trim();
+    if (!type || !value) return;
+    addHealthLogEntry(type, value, note);
+    box.querySelector('#hlType').value = '';
+    box.querySelector('#hlValue').value = '';
+    box.querySelector('#hlNote').value = '';
+    renderList();
+  };
+  box.querySelector('#hlCloseBtn').onclick = () => overlay.remove();
+}

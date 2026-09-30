@@ -37,6 +37,7 @@ from visual.pdfqa import extract_pages, store_document, answer_question_about_do
 from app.router import classify_intent, build_agent_system_note
 from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
+from app.triage import check_emergency
 
 app = FastAPI(title="Smart Companion API")
 
@@ -67,6 +68,14 @@ def redact_pii(input: TextInput):
 def decompose(req: TaskRequest):
     safe_goal = redact_text(req.goal)
 
+    if check_emergency(req.goal):
+        return {
+            "steps": [{"step": 1, "text": "This sounds like it could be a medical emergency. Please call 108 (ambulance) or 104 (health helpline) right now, or go to the nearest hospital immediately."}],
+            "is_final": True,
+            "is_question": False,
+            "is_emergency": True,
+        }
+
     result = decompose_task(
         goal=safe_goal,
         reading_level=req.reading_level,
@@ -76,9 +85,7 @@ def decompose(req: TaskRequest):
         history=[t.model_dump() for t in req.history],
         session_note=req.session_note,
     )
-
-    return result
-
+    return result  
 @app.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe(file: UploadFile = File(...)):
     audio_bytes = await file.read()
