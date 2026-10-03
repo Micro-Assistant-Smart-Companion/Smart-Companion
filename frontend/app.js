@@ -1,9 +1,3 @@
-/**
- * Smart Companion — Cognitive Operating System Engine
- * Multi-Modal Personal Executive-Functioning & Cognitive Architecture
- */
-
-// --- 1. HOST CONFIGURATION & CORE DOM REFERENCES ---
 let API = localStorage.getItem('companion_api_host') || ((window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
   ? `http://${window.location.hostname}:8000`
   : "http://127.0.0.1:8000");
