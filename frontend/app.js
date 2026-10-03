@@ -10,7 +10,6 @@ let currentGoal = null;
 let completedSteps = [];
 let stepCounter = 0;
 
-// --- multi-session sidebar (by topic, via /classify-session) ---
 const SESSIONS_KEY = 'companion_sessions';
 const initialFeedHTML = feedEl.innerHTML;
 let sessions = { general: { history: [], completedSteps: [], stepCounter: 0, currentGoal: null, feedHTML: initialFeedHTML, name: 'General', sessionNote: '' } };
@@ -384,13 +383,40 @@ function maybeShowNearbyHealthcare() {
   scrollToBottom();
 }
 
+// Caches the browser's last known location client-side, so we don't
+// re-ask GPS (with its own permission prompt + latency) on every single
+// lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls
+// how stale a cached fix is allowed to be before we fetch a fresh one.
+const LOCATION_CACHE_KEY = 'companion_last_location';
+
+function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {
+  return new Promise((resolve, reject) => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY));
+      if (cached && (Date.now() - cached.timestamp) < maxAgeMs) {
+        resolve({ lat: cached.lat, lon: cached.lon, fromCache: true });
+        return;
+      }
+    } catch (e) {}
+
+    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        try { localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify({ lat, lon, timestamp: Date.now() })); } catch (e) {}
+        resolve({ lat, lon, fromCache: false });
+      },
+      (err) => reject(err),
+      { timeout: 8000 }
+    );
+  });
+}
+
 function searchNearbyByGeolocation() {
-  if (!navigator.geolocation) { renderNearbyCard([]); return; }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => fetchAndRenderNearby(pos.coords.latitude, pos.coords.longitude),
-    () => renderNearbyCard([]),
-    { timeout: 8000 }
-  );
+  getCachedOrFreshLocation(10 * 60 * 1000) // reuse up to 10 min old - plenty fresh for "nearby doctors"
+    .then(({ lat, lon }) => fetchAndRenderNearby(lat, lon))
+    .catch(() => renderNearbyCard([]));
 }
 
 function showPlaceInput(parentDiv) {
@@ -1081,24 +1107,27 @@ function showEmergencyPanel() {
   overlay.querySelector('#sosCloseBtn').onclick = () => overlay.remove();
 
   const box = overlay.querySelector('#sosNearestHospital');
-  if (!navigator.geolocation) { box.textContent = ''; return; }
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      const res = await fetch(`${API}/directory/search?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&radius_km=20&limit=1`);
-      const data = await res.json();
-      if (data.doctors && data.doctors.length) {
-        const h = data.doctors[0];
-        const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
-        box.innerHTML = `Nearest listed facility: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
-          (firstPhone ? ` - <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--amber);">${escapeHtml(firstPhone)}</a>` : '');
-      } else {
-        box.textContent = "No listed facility found nearby - use the numbers above.";
+  // Shorter cache window here than the general "nearby doctors" lookup -
+  // freshness matters more when it's an emergency.
+  getCachedOrFreshLocation(2 * 60 * 1000)
+    .then(async ({ lat, lon }) => {
+      try {
+        const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=20&limit=1`);
+        const data = await res.json();
+        if (data.doctors && data.doctors.length) {
+          const h = data.doctors[0];
+          const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
+          box.innerHTML = `Nearest listed facility: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
+            (firstPhone ? ` - <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--amber);">${escapeHtml(firstPhone)}</a>` : '');
+        } else {
+          box.textContent = "No listed facility found nearby - use the numbers above.";
+        }
+      } catch (e) {
+        box.textContent = "Couldn't check nearby facilities - use the numbers above.";
       }
-    } catch (e) {
-      box.textContent = "Couldn't check nearby facilities - use the numbers above.";
-    }
-  }, () => { box.textContent = "Location unavailable - use the numbers above."; }, { timeout: 8000 });
+    })
+    .catch(() => { box.textContent = "Location unavailable - use the numbers above."; });
 }
 
 // --- HEALTH LOG (private, local only - never sent to any server as a
