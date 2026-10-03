@@ -3,6 +3,7 @@ uvicorn
 pydantic
 spacy
 groq
+huggingface_hub
 python-dotenv
 python-multipart
 pyaudio
@@ -11,3 +12,7 @@ torch
 ultralytics
 pillow
 pymupdf
+requests
+scikit-learn
+sentence-transformers
+opencv-python

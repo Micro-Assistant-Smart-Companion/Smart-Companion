@@ -1014,6 +1014,7 @@ if (sendBtn) sendBtn.addEventListener('click', () => handleSendClick());
 
 // --- 9. AUDIO CAPTURE & SPEECH SYNTHESIS ENGINE ---
 
+
 const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let liveRecognition = null;
 
@@ -2115,6 +2116,36 @@ function showHealthLogPanel() {
 
 // --- 15. EMERGENCY SOS MEDICAL PROTOCOL ---
 
+// Caches the browser's last known location client-side, so we don't
+// re-ask GPS (with its own permission prompt + latency) on every single
+// lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls
+// how stale a cached fix is allowed to be before we fetch a fresh one.
+const LOCATION_CACHE_KEY = 'companion_last_location';
+
+function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {
+  return new Promise((resolve, reject) => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY));
+      if (cached && (Date.now() - cached.timestamp) < maxAgeMs) {
+        resolve({ lat: cached.lat, lon: cached.lon, fromCache: true });
+        return;
+      }
+    } catch (e) {}
+
+    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        try { localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify({ lat, lon, timestamp: Date.now() })); } catch (e) {}
+        resolve({ lat, lon, fromCache: false });
+      },
+      (err) => reject(err),
+      { timeout: 8000 }
+    );
+  });
+}
+
 const sosBtnEl = document.getElementById('sosBtn');
 if (sosBtnEl) sosBtnEl.addEventListener('click', showEmergencyPanel);
 
@@ -2169,29 +2200,29 @@ function showEmergencyPanel() {
   overlay.onclick = (e) => { if (e.target === overlay) closeMe(); };
 
   const nearestBox = overlay.querySelector('#sosNearestHospital');
-  if (!navigator.geolocation) {
-    nearestBox.textContent = 'Location telemetry unavailable — dial 108 or 104.';
-    return;
-  }
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      const res = await fetch(`${API}/directory/search?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&radius_km=20&limit=1`);
-      const data = await res.json();
-      if (data.doctors && data.doctors.length) {
-        const h = data.doctors[0];
-        const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
-        nearestBox.innerHTML = `Nearest Hospital: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
-          (firstPhone ? ` — <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--teal); font-weight:700;">${escapeHtml(firstPhone)}</a>` : '');
-      } else {
-        nearestBox.textContent = 'No listed facility within 20 km. Use the direct lines above.';
+  // Shorter cache window here than the general "nearby doctors" lookup -
+  // freshness matters more when it's an emergency.
+  getCachedOrFreshLocation(2 * 60 * 1000)
+    .then(async ({ lat, lon }) => {
+      try {
+        const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=20&limit=1`);
+        const data = await res.json();
+        if (data.doctors && data.doctors.length) {
+          const h = data.doctors[0];
+          const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
+          nearestBox.innerHTML = `Nearest Hospital: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
+            (firstPhone ? ` — <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--teal); font-weight:700;">${escapeHtml(firstPhone)}</a>` : '');
+        } else {
+          nearestBox.textContent = 'No listed facility within 20 km. Use the direct lines above.';
+        }
+      } catch (e) {
+        nearestBox.textContent = 'Could not resolve facility — use the emergency hotlines.';
       }
-    } catch (e) {
-      nearestBox.textContent = 'Could not resolve facility — use the emergency hotlines.';
-    }
-  }, () => {
-    nearestBox.textContent = 'Geolocation permission denied.';
-  }, { timeout: 8000 });
+    })
+    .catch(() => {
+      nearestBox.textContent = 'Location telemetry unavailable — dial 108 or 104.';
+    });
 }
 
 // --- 16. CLINICAL DIRECTORY & LOCATION INTEGRATION ---
@@ -2236,22 +2267,16 @@ function maybeShowNearbyHealthcare() {
 }
 
 function searchNearbyByGeolocation() {
-  if (!navigator.geolocation) {
-    renderNearbyCard([]);
-    return;
-  }
   setStatus('Searching OSM healthcare directory…');
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
+  getCachedOrFreshLocation(10 * 60 * 1000) // reuse up to 10 min old - plenty fresh for "nearby doctors"
+    .then(({ lat, lon }) => {
       setStatus('');
-      fetchAndRenderNearby(pos.coords.latitude, pos.coords.longitude);
-    },
-    () => {
+      fetchAndRenderNearby(lat, lon);
+    })
+    .catch(() => {
       setStatus('');
       renderNearbyCard([]);
-    },
-    { timeout: 8000 }
-  );
+    });
 }
 
 function showPlaceInput(parentDiv) {
