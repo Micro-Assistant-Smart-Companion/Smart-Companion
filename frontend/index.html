@@ -1,139 +1,485 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Companion — say it, break it down</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart Companion</title>
+
+  <!-- Zero-flash theme initialization -->
+  <script>
+    (function() {
+      const stored = localStorage.getItem('companion_theme') || 'dark';
+      const isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    })();
+  </script>
+
+  <!-- Typography: Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-title">Your Agents</div>
-  <div id="sessionList"></div>
-  <button type="button" id="clearAllBtn" style="margin-top:16px; width:100%; text-align:left; background:transparent; border:1px solid var(--line); color:var(--ink-muted); padding:8px 10px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px;">🗑 Clear all chats</button>
-</div>
-<button type="button" id="healthLogBtn" style="margin-top:8px; width:100%; text-align:left; background:transparent; border:1px solid var(--line); color:var(--ink-muted); padding:8px 10px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px;">📋 My Health Log</button>
-<div class="wrap">
-  <div class="header-row">
-    <button type="button" class="sidebar-toggle" id="sidebarToggleBtn" title="Your Agents">☰</button>
-    <div class="mark">Companion</div>
-    <div style="display:flex; align-items:center; gap:6px;">
-      <div class="source-switcher" id="camSourceSwitcher" title="Switch between Webcam and IP Camera">
-        <button type="button" class="source-btn active" id="btnSrcWebcam" data-src="webcam">💻 Webcam</button>
-        <button type="button" class="source-btn" id="btnSrcIp" data-src="ipcamera"><span class="cam-dot" id="headerIpDot"></span>📱 IP Camera</button>
-      </div>
-      <button type="button" class="settings-btn" id="btnIpSettings" title="Configure IP Camera URL">⚙️</button>
-    </div>
-  </div>
-  <div class="feed" id="feed">
-    <div class="msg assistant">Hi! Tell me a goal or ask me anything — I'll break it into small, easy steps. 🌱</div>
-  </div>
-  <div class="status" id="status" role="status" aria-live="polite"></div>
-  <div class="attach-preview" id="attachPreview">
-    <img id="attachThumb" src="" alt="Selected photo">
-    <span class="attach-label">Photo attached — type your question and hit Send</span>
-    <button class="attach-remove" id="attachRemoveBtn" type="button" title="Remove photo">×</button>
-  </div>
-  <div class="doc-attach-preview" id="docAttachPreview">
-    <div class="doc-icon">📄</div>
-    <span class="attach-label" id="docAttachLabel">document.pdf attached — ask a question and hit Send</span>
-    <button class="attach-remove" id="docAttachRemoveBtn" type="button" title="Remove document">×</button>
-  </div>
-  <div class="input-row">
-    <textarea id="goal" rows="1" placeholder="Type or speak — e.g. how do I make biryani"></textarea>
-    <button class="mic-btn" id="micBtn" type="button" title="Record">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
-    </button>
-    <button class="cam-btn" id="camBtn" type="button" title="Add a photo or document">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-    </button>
-    <div class="cam-menu" id="camMenu">
-      <div style="font-size:12px; color:var(--ink-muted); padding:4px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-        <span>Source: <b id="camMenuSourceLabel" style="color:var(--amber);">Webcam</b></span>
-        <button type="button" id="camMenuSwitchBtn" style="color:var(--moss); font-size:11px; padding:0; border:none; background:transparent; cursor:pointer;">Switch</button>
-      </div>
-      <button type="button" id="camChooseBtn">📁 Choose Photo</button>
-      <button type="button" id="camTakeBtn">📷 Take Photo</button>
-      <button type="button" id="camGuideBtn">🔍 Find it live</button>
-      <button type="button" id="camDocBtn">📄 Upload Document</button>
-    </div>
-    <input type="file" id="camInputLibrary" accept="image/*" style="display:none;">
-    <input type="file" id="camInputCamera" accept="image/*" capture="environment" style="display:none;">
-    <input type="file" id="docInput" accept="application/pdf" style="display:none;">
-    <button class="send-btn" id="sendBtn" type="button">Send</button>
-  </div>
-</div>
 
-<div class="guide-overlay" id="liveCamOverlay">
-  <div class="overlay-topbar">
-    <div class="source-switcher compact" id="liveOverlaySwitcher">
-      <button type="button" class="source-btn active" id="liveSrcWebcam" data-src="webcam">💻 Webcam</button>
-      <button type="button" class="source-btn" id="liveSrcIp" data-src="ipcamera">📱 IP Camera</button>
-    </div>
-    <span class="stream-badge" id="liveCamBadge">Live</span>
-  </div>
-  <video id="liveCamVideo" autoplay playsinline muted></video>
-  <img id="liveCamIpImg" class="stream-view" alt="IP Camera Stream" style="display:none;">
-  <div class="live-answer" id="liveCamAnswer">Point the camera at anything and ask a question below.</div>
-  <div class="live-input-row">
-    <textarea id="liveCamGoal" rows="1" placeholder="Type or speak your question…"></textarea>
-    <button class="mic-btn" id="liveCamMicBtn" type="button" title="Speak">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
-    </button>
-    <button class="send-btn" id="liveCamSendBtn" type="button">Ask</button>
-  </div>
-  <div class="ambient-toggle-row">
-    <button class="ambient-toggle" id="ambientToggleBtn" type="button">
-      <span class="amb-dot"></span>Describe what I see
-    </button>
-  </div>
-  <button class="guide-close" id="liveCamCloseBtn" type="button">Close camera</button>
-</div>
+  <!-- Hidden canvas preserved for DOM ID compliance -->
+  <canvas id="neuralCanvas" style="display: none;" aria-hidden="true"></canvas>
 
-<div class="guide-overlay" id="snapOverlay">
-  <div class="overlay-topbar">
-    <div class="source-switcher compact" id="snapOverlaySwitcher">
-      <button type="button" class="source-btn active" id="snapSrcWebcam" data-src="webcam">💻 Webcam</button>
-      <button type="button" class="source-btn" id="snapSrcIp" data-src="ipcamera">📱 IP Camera</button>
-    </div>
-  </div>
-  <video id="snapVideo" autoplay playsinline muted></video>
-  <img id="snapIpImg" class="stream-view" alt="IP Camera Stream" style="display:none;">
-  <div class="guide-text" id="snapHint">Point the camera, then capture</div>
-  <div style="display:flex; gap:12px; margin-top:10px;">
-    <button class="guide-close" id="snapCaptureBtn" type="button" style="background:var(--amber);">📸 Capture</button>
-    <button class="guide-close" id="snapCancelBtn" type="button">Cancel</button>
-  </div>
-</div>
+  <div class="app-layout">
+    
+    <!-- Mobile Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
-<div class="settings-modal" id="ipSettingsModal">
-  <div class="settings-box">
-    <div class="settings-title">📱 IP Camera Stream Settings</div>
-    <div id="ipStatusIndicator" style="display:flex; align-items:center; gap:8px; margin:10px 0 12px; font-size:13px; font-weight:700;">
-      <span class="cam-dot" id="ipModalDot" style="width:9px; height:9px; margin-right:0;"></span>
-      <span id="ipModalStatusText" style="color:var(--ink-muted);">Checking camera status…</span>
-    </div>
-    <p style="font-size:13px; color:var(--ink-muted); margin:0 0 10px; line-height:1.4;">
-      Enter the stream URL provided by the <b>IP Webcam</b> app on your phone (e.g. <code>http://10.238.42.4:8080/video</code>):
-    </p>
-    <input type="text" id="ipCameraUrlInput" placeholder="http://10.238.42.4:8080/video" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; font-size:14px; margin-bottom:14px;">
-    <div style="display:flex; gap:8px; justify-content:space-between; align-items:center;">
-      <button type="button" id="ipTestBtn" class="guide-close" style="padding:8px 14px; margin:0; font-size:12px; background:transparent; border:1px solid var(--line); color:var(--amber);">⚡ Test Status</button>
-      <div style="display:flex; gap:8px;">
-        <button type="button" id="ipSettingsCancelBtn" class="guide-close" style="padding:8px 14px; margin:0; font-size:13px; background:transparent; border:1px solid var(--line);">Cancel</button>
-        <button type="button" id="ipSettingsSaveBtn" class="guide-close" style="padding:8px 18px; margin:0; font-size:13px; background:var(--moss);">Save & Connect</button>
+    <!-- LEFT SIDEBAR: Navigation & Tools -->
+    <aside class="sidebar-panel" id="sidebar" aria-label="Main Navigation">
+      
+      <!-- Brand Header: Logo + "Smart Companion" Wordmark -->
+      <div class="sidebar-header">
+        <div class="brand-badge">
+          <div class="brand-icon-mark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#7c5cff" stroke-width="2"/>
+              <circle cx="12" cy="12" r="3.5" fill="#7c5cff"/>
+              <circle cx="17" cy="8" r="1.5" fill="#22d3ee"/>
+            </svg>
+          </div>
+          <span class="brand-name">Smart Companion</span>
+        </div>
+        <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation">✕</button>
+      </div>
+
+      <!-- Large "+ New conversation" Button -->
+      <div class="sidebar-action-wrap">
+        <button type="button" class="btn-new-conversation" id="newChatBtn">
+          <span class="btn-plus-icon">＋</span>
+          <span>New conversation</span>
+        </button>
+      </div>
+
+      <!-- Scrollable Navigation Hub -->
+      <div class="sidebar-nav-scroll">
+        
+        <!-- CONVERSATIONS -->
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <span class="group-label">CONVERSATIONS</span>
+            <span class="group-count" id="sessionCountBadge">1</span>
+          </div>
+          <div class="session-list" id="sessionList" role="list"></div>
+        </div>
+
+        <!-- TOOLS -->
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <span class="group-label">TOOLS</span>
+          </div>
+          <nav class="tools-list">
+            <button type="button" class="tool-link-item" id="healthLogBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              <span>Health Log</span>
+            </button>
+            <button type="button" class="tool-link-item" id="camVisionToolBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <span>Vision & Camera</span>
+            </button>
+            <button type="button" class="tool-link-item" id="docToolBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <span>Upload Document</span>
+            </button>
+            <button type="button" class="tool-link-item" id="viewBadgesBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+              <span>Progress & Badges</span>
+            </button>
+          </nav>
+        </div>
+
+      </div>
+
+      <!-- Sidebar Footer: Streak + Theme + Clear -->
+      <div class="sidebar-footer">
+        
+        <!-- Progress / Streak Area -->
+        <div class="growth-tile" id="gamifyBar" title="Click to view progress">
+          <div class="growth-tile-left">
+            <span class="growth-stage-icon" id="gamifyStageIcon">🌱</span>
+            <div class="growth-meta">
+              <span class="growth-title">Progress</span>
+              <span class="growth-count" id="gamifyLabel">0 steps completed</span>
+            </div>
+          </div>
+          <span class="growth-streak" id="gamifyStreak">0d streak</span>
+        </div>
+
+        <!-- Theme Selector: Light / Dark / Auto -->
+        <div class="theme-switcher-bar" role="radiogroup" aria-label="Color Theme">
+          <button type="button" class="theme-pill-btn" id="themeLightBtn" data-theme="light" title="Light Theme">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg>
+            <span>Light</span>
+          </button>
+          <button type="button" class="theme-pill-btn active" id="themeDarkBtn" data-theme="dark" title="Dark Theme">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <span>Dark</span>
+          </button>
+          <button type="button" class="theme-pill-btn" id="themeSystemBtn" data-theme="system" title="System Theme">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span>Auto</span>
+          </button>
+        </div>
+
+        <button type="button" class="btn-clear-history" id="clearAllBtn">
+          Clear conversation memory
+        </button>
+      </div>
+    </aside>
+
+    <!-- CENTER WORKSPACE: Clean, Focused, Authoritative Reference Layout -->
+    <main class="main-workspace">
+      
+      <!-- Top Header Bar -->
+      <header class="workspace-topbar">
+        <div class="topbar-left">
+          <button type="button" class="topbar-btn sidebar-trigger" id="sidebarToggleBtn" aria-label="Toggle navigation">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          
+          <div class="topbar-breadcrumb">
+            <span class="breadcrumb-app">Smart Companion</span>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-session" id="currentAgentTag">General</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Optical Sensor Toggle -->
+          <div class="sensor-toggle-bar" id="camSourceSwitcher" title="Switch Optical Input (Webcam / IP Camera)">
+            <button type="button" class="sensor-pill active" id="btnSrcWebcam" data-src="webcam">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+              <span>Webcam</span>
+            </button>
+            <button type="button" class="sensor-pill" id="btnSrcIp" data-src="ipcamera">
+              <span class="status-pip" id="headerIpDot"></span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+              <span>IP Cam</span>
+            </button>
+          </div>
+
+          <!-- Settings Icon Button -->
+          <button type="button" class="topbar-icon-btn" id="btnIpSettings" title="Camera Settings" aria-label="Camera Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </button>
+
+          <!-- Hidden context toggle for DOM ID compatibility -->
+          <button type="button" class="topbar-icon-btn" id="contextPanelToggleBtn" style="display:none;" aria-label="Context Panel">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+          </button>
+
+          <!-- Emergency SOS Trigger -->
+          <button id="sosBtn" type="button" class="btn-emergency-sos" title="Emergency Medical Protocol">
+            <span>SOS</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Interaction Stage / Feed -->
+      <div class="workspace-scroll-area">
+        <div class="feed-container" id="feed" role="log" aria-live="polite">
+          
+          <!-- Authoritative Main Empty State / Hero -->
+          <section class="welcome-hero-card" id="welcomeHero">
+            <div class="hero-brand-mark" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#7c5cff" stroke-width="2"/>
+                <circle cx="12" cy="12" r="3.5" fill="#7c5cff"/>
+                <circle cx="17" cy="8" r="1.5" fill="#22d3ee"/>
+              </svg>
+            </div>
+            <div class="hero-brand-label">SMART COMPANION</div>
+
+            <h1 class="hero-title">What would you like to make easier?</h1>
+            <p class="hero-subtitle">
+              Tell me what feels difficult, unclear, or overwhelming. I'll help you take the next small step.
+            </p>
+
+            <!-- 4 Exact Suggestion Cards in 2x2 Grid -->
+            <div class="suggested-actions-grid">
+              
+              <button type="button" class="action-card chip-btn" data-goal="Clean my study desk">
+                <span class="card-text">Clean my study desk</span>
+                <span class="card-arrow">→</span>
+              </button>
+
+              <button type="button" class="action-card chip-btn" data-goal="Plan today's exam preparation">
+                <span class="card-text">Plan today's exam preparation</span>
+                <span class="card-arrow">→</span>
+              </button>
+
+              <button type="button" class="action-card chip-btn" data-goal="Explain this concept simply">
+                <span class="card-text">Explain this concept simply</span>
+                <span class="card-arrow">→</span>
+              </button>
+
+              <button type="button" class="action-card chip-btn" data-goal="Help me start cooking">
+                <span class="card-text">Help me start cooking</span>
+                <span class="card-arrow">→</span>
+              </button>
+
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- BOTTOM ZONE: Input Composer Matching Reference -->
+      <footer class="composer-container">
+        
+        <!-- Subtle Status Line -->
+        <div class="composer-status-row">
+          <div class="status-text" id="status" role="status" aria-live="polite"></div>
+        </div>
+
+        <!-- Live Transcription Floating Audio Wave Strip -->
+        <div class="live-transcription-dock" id="liveTicker" style="display:none;">
+          <div class="audio-wave-bars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <span class="transcription-text" id="liveTickerText">Listening for audio…</span>
+        </div>
+
+        <!-- Attachment Staging Drawers -->
+        <div class="media-staging-bar" id="attachPreview">
+          <div class="staging-item">
+            <img id="attachThumb" src="" alt="Staged Image">
+            <div class="staging-details">
+              <span class="staging-name">Visual context attached</span>
+            </div>
+          </div>
+          <button type="button" class="staging-close-btn" id="attachRemoveBtn" aria-label="Remove image">✕</button>
+        </div>
+
+        <div class="media-staging-bar" id="docAttachPreview">
+          <div class="staging-item">
+            <div class="doc-file-badge">PDF</div>
+            <div class="staging-details">
+              <span class="staging-name" id="docAttachLabel">Document attached</span>
+            </div>
+          </div>
+          <button type="button" class="staging-close-btn" id="docAttachRemoveBtn" aria-label="Remove document">✕</button>
+        </div>
+
+        <!-- Core Input Composer Box -->
+        <div class="composer-box">
+          <textarea id="goal" rows="1" placeholder="Type a task, goal, or question..." aria-label="Task or question input"></textarea>
+
+          <div class="composer-toolbar">
+            
+            <div class="toolbar-left">
+              <!-- Voice Microphone Button -->
+              <button class="tool-btn mic-btn" id="micBtn" type="button" title="Speak to dictate" aria-label="Voice dictation">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+              </button>
+
+              <!-- Media / Camera Popover Trigger -->
+              <div class="anchor-dropdown">
+                <button class="tool-btn" id="camBtn" type="button" title="Attach media or document" aria-label="Media options">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                </button>
+
+                <!-- Camera/Document Dropdown Menu -->
+                <div class="cam-menu" id="camMenu" role="menu">
+                  <div class="menu-heading">
+                    <span>Camera: <b id="camMenuSourceLabel">Webcam</b></span>
+                    <button type="button" id="camMenuSwitchBtn" class="menu-switch-action">Switch</button>
+                  </div>
+                  <button type="button" id="camChooseBtn" class="cam-menu-item" role="menuitem">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Upload Image Frame</span>
+                  </button>
+                  <button type="button" id="camTakeBtn" class="cam-menu-item" role="menuitem">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    <span>Capture Snapshot</span>
+                  </button>
+                  <button type="button" id="camGuideBtn" class="cam-menu-item" role="menuitem">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span>Guided Vision Search</span>
+                  </button>
+                  <button type="button" id="camDocBtn" class="cam-menu-item" role="menuitem">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span>Upload Document (PDF)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Native Hidden File Pickers -->
+              <input type="file" id="camInputLibrary" accept="image/*" style="display:none;">
+              <input type="file" id="camInputCamera" accept="image/*" capture="environment" style="display:none;">
+              <input type="file" id="docInput" accept="application/pdf" style="display:none;">
+            </div>
+
+            <!-- Send Button: compact, white surface in dark theme, dark icon -->
+            <button class="btn-send-message" id="sendBtn" type="button" aria-label="Send">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+
+          </div>
+        </div>
+
+      </footer>
+
+    </main>
+
+    <!-- Contextual Information (Preserved in DOM for functionality) -->
+    <aside class="os-context-panel" id="contextPanel" style="display:none;" aria-label="Contextual Information">
+      <div class="panel-header">
+        <span class="panel-title">Context & Telemetry</span>
+        <button type="button" class="deck-icon-btn panel-close-btn" id="contextPanelCloseBtn" aria-label="Close context panel">✕</button>
+      </div>
+      <div class="panel-content">
+        <span class="card-chip" id="contextCamSource">WEBCAM</span>
+        <video id="panelWebcamPreview" autoplay playsinline muted></video>
+        <img id="panelIpImgPreview" class="stream-view" alt="IP Stream Preview" style="display:none;">
+        <button type="button" class="btn-panel-action" id="panelLaunchVisionBtn">Open Vision Workspace</button>
+        <div class="growth-meter">
+          <div class="meter-bar"><div class="meter-fill" id="growthMeterFill" style="width: 25%;"></div></div>
+          <span id="growthStageName">Seedling</span>
+          <span id="growthNextTarget">5 steps to next phase</span>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ==============================================
+       MODALS & SENSOR VIEWPORTS (PRESERVED 100%)
+       ============================================== -->
+
+  <!-- Vision Workspace Modal -->
+  <div class="modal-dialog-overlay" id="liveCamOverlay" role="dialog" aria-modal="true" aria-label="Vision Workspace">
+    <div class="modal-dialog-window">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-badge">VISION & CAMERA</div>
+          <div class="dialog-title">Optical Guidance Workspace</div>
+        </div>
+        <div class="dialog-header-actions">
+          <div class="sensor-toggle-bar compact" id="liveOverlaySwitcher">
+            <button type="button" class="sensor-pill active" id="liveSrcWebcam" data-src="webcam">Webcam</button>
+            <button type="button" class="sensor-pill" id="liveSrcIp" data-src="ipcamera">IP Camera</button>
+          </div>
+          <span class="live-status-tag" id="liveCamBadge">LIVE</span>
+          <button type="button" class="dialog-close-btn" id="liveCamCloseBtn" aria-label="Close vision">✕</button>
+        </div>
+      </div>
+
+      <div class="dialog-body-split">
+        <div class="viewport-box">
+          <video id="liveCamVideo" autoplay playsinline muted></video>
+          <img id="liveCamIpImg" class="stream-view" alt="Live Feed" style="display:none;">
+          <canvas id="liveCamCanvas" class="viewport-canvas"></canvas>
+        </div>
+
+        <div class="guidance-sidebar">
+          <div class="guidance-response-card" id="liveCamAnswer">
+            Point camera at objects or text to initiate cognitive vision guidance.
+          </div>
+
+          <div class="guidance-actions">
+            <button type="button" class="btn-subtle" id="ambientToggleBtn">
+              <span>Ambient Scene Reasoning (6s)</span>
+            </button>
+          </div>
+
+          <div class="guidance-input-row">
+            <input type="text" id="liveCamGoal" placeholder="Ask about this visual scene…" aria-label="Vision query">
+            <button type="button" class="icon-action-btn" id="liveCamMicBtn" title="Speak question" aria-label="Voice question">🎙️</button>
+            <button type="button" class="btn-execute" id="liveCamSendBtn">Query</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<button id="sosBtn" type="button" title="Emergency" style="position:fixed; top:14px; right:14px; z-index:250; background:var(--error); color:#fff; border:none; border-radius:50%; width:44px; height:44px; font-size:18px; cursor:pointer; box-shadow:0 4px 14px rgba(255,107,107,0.5);">🆘</button>
-<div style="position:fixed; bottom:2px; left:0; right:0; text-align:center; font-size:10px; color:var(--ink-muted); opacity:0.5; pointer-events:none; z-index:1;">
-  Doctor listings data © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:inherit; pointer-events:auto;">OpenStreetMap</a> contributors
-</div>
-<script src="app.js"></script>
+
+  <!-- Snapshot Capture Modal -->
+  <div class="modal-dialog-overlay" id="snapOverlay" role="dialog" aria-modal="true" aria-label="Capture Optical Frame">
+    <div class="modal-dialog-window modal-compact">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-badge">SNAPSHOT</div>
+          <div class="dialog-title" id="snapHint">Point camera and capture</div>
+        </div>
+        <button type="button" class="dialog-close-btn" id="snapCancelBtn" aria-label="Close">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="viewport-box">
+          <video id="snapVideo" autoplay playsinline muted></video>
+          <img id="snapIpImg" class="stream-view" alt="Camera Feed" style="display:none;">
+        </div>
+        <div class="dialog-footer-strip">
+          <div class="sensor-toggle-bar compact" id="snapOverlaySwitcher">
+            <button type="button" class="sensor-pill active" id="snapSrcWebcam" data-src="webcam">Webcam</button>
+            <button type="button" class="sensor-pill" id="snapSrcIp" data-src="ipcamera">IP Camera</button>
+          </div>
+          <button type="button" class="btn-execute" id="snapCaptureBtn">Capture & Stage Frame</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IP Camera & Settings Modal -->
+  <div class="modal-dialog-overlay" id="ipSettingsModal" role="dialog" aria-modal="true" aria-label="System and Camera Settings">
+    <div class="modal-dialog-window modal-compact">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-badge">SYSTEM CONFIGURATION</div>
+          <div class="dialog-title">Settings & Network Sensors</div>
+        </div>
+        <button type="button" class="dialog-close-btn" id="ipSettingsCancelIcon" aria-label="Close">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="sensor-status-indicator">
+          <span class="status-pip" id="ipModalDot"></span>
+          <span id="ipModalStatusText">Querying network link…</span>
+        </div>
+        <div class="input-form-group">
+          <label for="backendApiHostInput" class="form-label">FastAPI Backend Endpoint</label>
+          <input type="text" id="backendApiHostInput" class="form-text-input" placeholder="http://127.0.0.1:8000">
+        </div>
+        <div class="input-form-group">
+          <label for="ipCameraUrlInput" class="form-label">Stream RTSP / MJPEG URL</label>
+          <input type="text" id="ipCameraUrlInput" class="form-text-input" placeholder="http://192.168.1.X:8080/video">
+        </div>
+        <div class="dialog-actions-split">
+          <button type="button" class="btn-subtle" id="ipTestBtn">Test Stream Link</button>
+          <div class="actions-right">
+            <button type="button" class="btn-subtle" id="ipSettingsCancelBtn">Cancel</button>
+            <button type="button" class="btn-execute" id="ipSettingsSaveBtn">Save & Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badges & Progress Modal -->
+  <div class="modal-dialog-overlay" id="badgesModal" role="dialog" aria-modal="true" aria-label="Growth Badges">
+    <div class="modal-dialog-window modal-compact">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <div class="dialog-badge">PROGRESSION</div>
+          <div class="dialog-title">Growth Badges & Milestones</div>
+        </div>
+        <button type="button" class="dialog-close-btn" id="badgesCloseBtn" aria-label="Close">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="badges-grid-view" id="badgesContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Core JavaScript -->
+  <script src="app.js"></script>
 </body>
 </html>
