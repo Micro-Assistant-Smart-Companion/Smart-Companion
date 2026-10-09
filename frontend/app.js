@@ -315,7 +315,7 @@ function renderSidebar() {
   sessionKeys.forEach(label => {
     const item = document.createElement('div');
     item.className = 'sidebar-item' + (label === currentLabel ? ' active' : '');
-
+    
     const labelSpan = document.createElement('span');
     labelSpan.className = 'sidebar-item-label';
     labelSpan.textContent = sessions[label].name || label;
@@ -810,12 +810,16 @@ function addAssistantBubble(steps, isFinal) {
       if (badgeEl) {
         if (completedCount === stepEntries.length) {
           badgeEl.textContent = `All ${stepEntries.length} completed ✓`;
+          const doneBtn = wrap.querySelector('.done-btn');
+          if (doneBtn) {
+            doneBtn.innerHTML = `<span>Done — what's next?</span> <span>→</span>`;
+          }
         } else {
           badgeEl.textContent = `${completedCount} of ${stepEntries.length} completed`;
-        }
-        const doneBtn = wrap.querySelector('.done-btn');
-        if (doneBtn) {
-          doneBtn.innerHTML = `<span>Done — what's next?</span> <span>→</span>`;
+          const doneBtn = wrap.querySelector('.done-btn');
+          if (doneBtn) {
+            doneBtn.innerHTML = `<span>Done — what's next?</span> <span>→</span>`;
+          }
         }
       }
     };
@@ -959,7 +963,7 @@ async function sendMessage(text) {
     snapshotCurrentSession();
 
     if (data.is_emergency) {
-      showEmergencyPanel(true); // true = a real emergency was detected from the chat text
+      showEmergencyPanel();
     } else {
       maybeShowNearbyHealthcare();
     }
@@ -1003,6 +1007,7 @@ async function handleDone(btnEl) {
 if (sendBtn) sendBtn.addEventListener('click', () => handleSendClick());
 
 // --- 9. AUDIO CAPTURE & SPEECH SYNTHESIS ENGINE ---
+
 
 const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let liveRecognition = null;
@@ -1216,17 +1221,14 @@ function setCameraSource(source) {
   if (contextCamSource) contextCamSource.textContent = isWebcam ? 'WEBCAM' : 'IP CAM';
 
   if (isWebcam) {
-    stopIpImgPolling(); // no IP frame polling while on webcam
     if (panelIpImgPreview) panelIpImgPreview.style.display = 'none';
     if (panelWebcamPreview) panelWebcamPreview.style.display = 'block';
-    if (headerIpDot) headerIpDot.style.background = 'var(--text-faint)';
   } else {
     if (panelWebcamPreview) panelWebcamPreview.style.display = 'none';
     if (panelIpImgPreview) {
       panelIpImgPreview.style.display = 'block';
       startIpImgPolling(panelIpImgPreview);
     }
-    checkCameraStatus(true); // one real status check when switching INTO ip camera mode
   }
 
   if (snapOverlay && snapOverlay.classList.contains('active')) startSnapCapture();
@@ -1243,11 +1245,7 @@ if (camMenuSwitchBtn) camMenuSwitchBtn.addEventListener('click', () => {
   setCameraSource(currentCameraSource === 'webcam' ? 'ipcamera' : 'webcam');
 });
 
-// The periodic poll only touches the network while IP Camera mode is
-// actually selected. `force` lets explicit user actions (opening
-// settings, Test button) check regardless of the current mode.
-async function checkCameraStatus(force = false) {
-  if (!force && currentCameraSource !== 'ipcamera') return null;
+async function checkCameraStatus() {
   try {
     const res = await fetch(`${API}/camera/status`);
     if (res.ok) {
@@ -1280,13 +1278,14 @@ async function checkCameraStatus(force = false) {
   }
   return null;
 }
-setInterval(() => checkCameraStatus(), 8000);
+checkCameraStatus();
+setInterval(checkCameraStatus, 8000);
 
 if (btnIpSettings) {
   btnIpSettings.addEventListener('click', () => {
     if (ipSettingsModal) ipSettingsModal.classList.add('active');
     if (backendApiHostInput) backendApiHostInput.value = localStorage.getItem('companion_api_host') || '';
-    checkCameraStatus(true);
+    checkCameraStatus();
     if (ipCameraUrlInput) ipCameraUrlInput.focus();
   });
 }
@@ -1302,7 +1301,7 @@ if (ipTestBtn) {
   ipTestBtn.addEventListener('click', async () => {
     ipTestBtn.disabled = true;
     ipTestBtn.textContent = 'Pinging…';
-    const status = await checkCameraStatus(true);
+    const status = await checkCameraStatus();
     ipTestBtn.disabled = false;
     ipTestBtn.textContent = 'Test Stream Link';
     if (status && status.connected) setStatus('Optical link verified active.');
@@ -1343,7 +1342,7 @@ if (ipSettingsSaveBtn) {
         const data = await res.json();
         ipCameraUrlInput.value = data.url;
         setCameraSource('ipcamera');
-        await checkCameraStatus(true);
+        await checkCameraStatus();
         setStatus(data.connected ? 'Stream link verified.' : 'Stream URL saved.');
       } else {
         setStatus('Failed to update stream configuration.', true);
@@ -1836,8 +1835,6 @@ function stopAmbientMode() {
     clearInterval(ambientIntervalId);
     ambientIntervalId = null;
   }
-  // also silence whatever is being spoken right now, not just future calls
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
 async function describeSceneOnce() {
@@ -1940,7 +1937,7 @@ function renderGamifyBar() {
   const growthMeterFill = document.getElementById('growthMeterFill');
   const growthStageName = document.getElementById('growthStageName');
   const growthNextTarget = document.getElementById('growthNextTarget');
-
+  
   if (growthMeterFill) {
     const pct = Math.min(100, ((g.totalSteps % 5) / 5) * 100);
     growthMeterFill.style.width = pct + '%';
@@ -1998,80 +1995,7 @@ if (badgesModal) {
   });
 }
 
-// --- 14. EMERGENCY CONTACTS (single source of truth, unlimited) ---
-// Used by BOTH the SOS panel and the Health Log, so a contact is only
-// ever saved in one place. Stored privately in this browser only.
-
-const EMERGENCY_CONTACTS_KEY = 'companion_emergency_contacts';
-const LEGACY_CONTACT_KEY = 'companion_emergency_contact'; // older single-contact format
-
-function loadEmergencyContacts() {
-  let list = [];
-  try { list = JSON.parse(localStorage.getItem(EMERGENCY_CONTACTS_KEY)) || []; } catch (e) {}
-  if (!list.length) {
-    // one-time migration of the old single saved contact, if one exists
-    try {
-      const legacy = JSON.parse(localStorage.getItem(LEGACY_CONTACT_KEY));
-      if (legacy && legacy.phone) {
-        list = [{ name: legacy.name || 'Emergency contact', phone: legacy.phone, relation: '' }];
-        localStorage.setItem(EMERGENCY_CONTACTS_KEY, JSON.stringify(list));
-      }
-    } catch (e) {}
-  }
-  return list;
-}
-function saveEmergencyContacts(list) {
-  try { localStorage.setItem(EMERGENCY_CONTACTS_KEY, JSON.stringify(list)); } catch (e) {}
-}
-function addEmergencyContact(name, phone, relation) {
-  const list = loadEmergencyContacts();
-  list.push({ name, phone, relation: relation || '' });
-  saveEmergencyContacts(list);
-}
-function removeEmergencyContact(index) {
-  const list = loadEmergencyContacts();
-  list.splice(index, 1);
-  saveEmergencyContacts(list);
-}
-
-// WhatsApp/tel links need digits only, with country code. If someone types
-// a bare 10-digit number we assume India (+91), matching the rest of the app.
-function normalizePhone(raw) {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (d.length === 10) d = '91' + d;
-  return d;
-}
-
-function buildEmergencyMessage(lat, lon) {
-  const maps = (lat != null && lon != null) ? `https://maps.google.com/?q=${lat},${lon}` : '';
-  return 'EMERGENCY: I may need urgent help (sent from Smart Companion).' +
-    (maps ? ` My location: ${maps}` : ' (Location unavailable.)');
-}
-
-function whatsappLink(phone, message) {
-  return `https://wa.me/${normalizePhone(phone)}?text=${encodeURIComponent(message)}`;
-}
-
-// Opens a WhatsApp chat (message pre-filled) for every saved contact.
-// WhatsApp itself requires a human to press Send - there is no way around
-// that without a paid API - and browsers may block extra tabs opened
-// without a fresh click. Returns how many opened vs got blocked.
-function openWhatsAppForAll(lat, lon) {
-  const contacts = loadEmergencyContacts();
-  const msg = buildEmergencyMessage(lat, lon);
-  let opened = 0, blocked = 0;
-  contacts.forEach(c => {
-    const w = window.open(whatsappLink(c.phone, msg), '_blank');
-    if (w) opened++; else blocked++;
-  });
-  return { total: contacts.length, opened, blocked };
-}
-window.notifyAllEmergencyContacts = () => {
-  const loc = peekCachedLocation(30 * 60 * 1000);
-  return Promise.resolve(openWhatsAppForAll(loc ? loc.lat : null, loc ? loc.lon : null));
-};
-
-// --- 15. PRIVATE HEALTH LOG SYSTEM ---
+// --- 14. PRIVATE HEALTH LOG SYSTEM ---
 
 const HEALTH_LOG_KEY = 'companion_health_log';
 
@@ -2117,8 +2041,6 @@ function showHealthLogPanel() {
 
   const box = document.createElement('div');
   box.className = 'settings-box';
-  box.style.maxHeight = '88vh';
-  box.style.overflowY = 'auto';
 
   box.innerHTML = `
     <div class="dialog-header">
@@ -2130,7 +2052,7 @@ function showHealthLogPanel() {
     </div>
 
     <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
-      Stored only in this browser. Relevant metrics are contextualized only during medical sessions.
+      Stored in encrypted local device space. Relevant metrics are contextualized only during medical sessions.
     </p>
 
     <div style="display:flex; gap:8px; margin-bottom:8px;">
@@ -2141,7 +2063,7 @@ function showHealthLogPanel() {
     <button id="hlAddBtn" class="btn-execute" style="width:100%; margin-bottom:16px;">Record Telemetry</button>
 
     <div style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">STORED RECORDS</div>
-    <div id="hlList" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+    <div id="hlList" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
   `;
 
   overlay.appendChild(box);
@@ -2181,130 +2103,11 @@ function showHealthLogPanel() {
     renderList();
   };
 
-  // Medicines + emergency contacts live in this same panel
-  renderMedicinesSection(box);
-  renderFamilyContactsSection(box);
-
   const closeMe = () => overlay.remove();
   box.querySelector('#hlCloseIcon').onclick = closeMe;
   overlay.onclick = (e) => { if (e.target === overlay) closeMe(); };
 }
 
-<<<<<<< HEAD
-const MEDICINES_KEY = 'companion_medicines';
-
-function loadMedicines() {
-  try { return JSON.parse(localStorage.getItem(MEDICINES_KEY)) || []; }
-  catch (e) { return []; }
-}
-function saveMedicines(list) {
-  try { localStorage.setItem(MEDICINES_KEY, JSON.stringify(list)); } catch (e) {}
-}
-function addMedicine(name, dosage, time) {
-  const list = loadMedicines();
-  list.push({ id: Date.now(), name, dosage, time });
-  saveMedicines(list);
-}
-function removeMedicine(index) {
-  const list = loadMedicines();
-  list.splice(index, 1);
-  saveMedicines(list);
-}
-
-function renderMedicinesSection(box) {
-  const section = document.createElement('div');
-  section.innerHTML = `
-    <div style="font-size:15px; font-weight:700; color:var(--teal); margin:18px 0 8px;">💊 My Medicines</div>
-    <div style="display:flex; gap:6px; margin-bottom:8px;">
-      <input id="medName" placeholder="Medicine name" style="flex:1; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-      <input id="medDose" placeholder="Dosage" style="width:80px; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-      <input id="medTime" placeholder="Time (e.g. 8am)" style="width:90px; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-    </div>
-    <button id="medAddBtn" class="btn-subtle" style="width:100%; margin-bottom:10px;">+ Add medicine</button>
-    <div id="medList"></div>
-  `;
-  box.appendChild(section);
-
-  function renderList() {
-    const meds = loadMedicines();
-    const listEl = section.querySelector('#medList');
-    if (!meds.length) {
-      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No medicines added yet.</div>';
-      return;
-    }
-    listEl.innerHTML = meds.map((m, i) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-subtle); font-size:13px;">
-        <span><b>${escapeHtml(m.name)}</b> - ${escapeHtml(m.dosage || '')} ${m.time ? 'at ' + escapeHtml(m.time) : ''}</span>
-        <button data-idx="${i}" class="med-remove-btn" style="background:none; border:none; color:var(--coral); cursor:pointer; font-size:12px;">✕</button>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.med-remove-btn').forEach(btn => {
-      btn.onclick = () => { removeMedicine(parseInt(btn.dataset.idx, 10)); renderList(); };
-    });
-  }
-  renderList();
-
-  section.querySelector('#medAddBtn').onclick = () => {
-    const name = section.querySelector('#medName').value.trim();
-    const dosage = section.querySelector('#medDose').value.trim();
-    const time = section.querySelector('#medTime').value.trim();
-    if (!name) return;
-    addMedicine(name, dosage, time);
-    section.querySelector('#medName').value = '';
-    section.querySelector('#medDose').value = '';
-    section.querySelector('#medTime').value = '';
-    renderList();
-  };
-}
-
-function renderFamilyContactsSection(box) {
-  const section = document.createElement('div');
-  section.innerHTML = `
-    <div style="font-size:15px; font-weight:700; color:var(--coral); margin:18px 0 8px;">👨‍👩‍👧 Emergency Contacts (add as many as you like)</div>
-    <div style="display:flex; gap:6px; margin-bottom:8px;">
-      <input id="famName" placeholder="Name" style="flex:1; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-      <input id="famRelation" placeholder="Relation / Role" style="flex:1; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-    </div>
-    <input id="famPhone" placeholder="Phone with country code, e.g. 919876543210" style="width:100%; box-sizing:border-box; padding:7px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px; margin-bottom:8px;">
-    <button id="famAddBtn" class="btn-subtle" style="width:100%; margin-bottom:10px;">+ Add contact</button>
-    <div id="famList"></div>
-  `;
-  box.appendChild(section);
-
-  function renderList() {
-    const list = loadEmergencyContacts();
-    const listEl = section.querySelector('#famList');
-    if (!list.length) {
-      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No contacts added yet.</div>';
-      return;
-    }
-    listEl.innerHTML = list.map((c, i) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-subtle); font-size:13px;">
-        <span><b>${escapeHtml(c.name)}</b> (${escapeHtml(c.relation || 'contact')}) - ${escapeHtml(c.phone)}</span>
-        <button data-idx="${i}" class="fam-remove-btn" style="background:none; border:none; color:var(--coral); cursor:pointer; font-size:12px;">✕</button>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.fam-remove-btn').forEach(btn => {
-      btn.onclick = () => { removeEmergencyContact(parseInt(btn.dataset.idx, 10)); renderList(); };
-    });
-  }
-  renderList();
-
-  section.querySelector('#famAddBtn').onclick = () => {
-    const name = section.querySelector('#famName').value.trim();
-    const relation = section.querySelector('#famRelation').value.trim();
-    const phone = section.querySelector('#famPhone').value.trim();
-    if (!name || !phone) return;
-    addEmergencyContact(name, phone, relation);
-    section.querySelector('#famName').value = '';
-    section.querySelector('#famRelation').value = '';
-    section.querySelector('#famPhone').value = '';
-    renderList();
-  };
-}
-
-// --- 16. EMERGENCY SOS MEDICAL PROTOCOL ---
-=======
 // --- 14.5. EMERGENCY CONTACTS STORAGE & ALERT SYSTEM ---
 
 const EMERGENCY_CONTACTS_KEY = 'companion_emergency_contacts';
@@ -2484,31 +2287,22 @@ Please call me or send emergency help immediately!</div>
 }
 
 // --- 15. EMERGENCY SOS MEDICAL PROTOCOL ---
->>>>>>> 408d11c4d1ccf07731f4a89c6767f934a1c90e41
 
 // Caches the browser's last known location client-side, so we don't
 // re-ask GPS (with its own permission prompt + latency) on every single
-// lookup. maxAgeMs controls how stale a cached fix may be before we
-// fetch a fresh one.
+// lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls
+// how stale a cached fix is allowed to be before we fetch a fresh one.
 const LOCATION_CACHE_KEY = 'companion_last_location';
-
-// Synchronous read of the cached location (no GPS call) - used when
-// speed matters more than freshness, e.g. the first instant of an SOS.
-function peekCachedLocation(maxAgeMs = 30 * 60 * 1000) {
-  try {
-    const cached = JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY));
-    if (cached && (Date.now() - cached.timestamp) < maxAgeMs) return { lat: cached.lat, lon: cached.lon };
-  } catch (e) {}
-  return null;
-}
 
 function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {
   return new Promise((resolve, reject) => {
-    const cached = peekCachedLocation(maxAgeMs);
-    if (cached) {
-      resolve({ lat: cached.lat, lon: cached.lon, fromCache: true });
-      return;
-    }
+    try {
+      const cached = JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY));
+      if (cached && (Date.now() - cached.timestamp) < maxAgeMs) {
+        resolve({ lat: cached.lat, lon: cached.lon, fromCache: true });
+        return;
+      }
+    } catch (e) {}
 
     if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
 
@@ -2524,85 +2318,17 @@ function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {
   });
 }
 
-// Self-contained styles for the SOS panel animation (no style.css edit needed)
-(function injectSosStyles() {
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes sosPulseGlow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.45); }
-      50% { box-shadow: 0 0 0 14px rgba(255, 71, 87, 0); }
-    }
-    @keyframes sosFadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-    .sos-premium-box { animation: sosFadeIn 0.22s ease; }
-    .sos-siren-ring { animation: sosPulseGlow 1.6s ease-in-out infinite; }
-  `;
-  document.head.appendChild(style);
-})();
-
 const sosBtnEl = document.getElementById('sosBtn');
-// arrow wrapper so the click Event is NOT passed in as `autoNotify`
-if (sosBtnEl) sosBtnEl.addEventListener('click', () => showEmergencyPanel(false));
+if (sosBtnEl) sosBtnEl.addEventListener('click', showEmergencyPanel);
 
-// Current coordinates for the open SOS panel, so the WhatsApp links can be
-// refreshed as soon as a fresh GPS fix arrives.
-let sosCoords = { lat: null, lon: null };
-
-function showEmergencyPanel(autoNotify = false) {
-  // never stack two SOS panels
-  const existing = document.getElementById('sosOverlayRoot');
-  if (existing) existing.remove();
-
+function showEmergencyPanel() {
   const overlay = document.createElement('div');
-  overlay.id = 'sosOverlayRoot';
   overlay.className = 'settings-modal active';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
   overlay.style.zIndex = '999';
-  overlay.style.backdropFilter = 'blur(6px)';
 
   const box = document.createElement('div');
-<<<<<<< HEAD
-  box.className = 'settings-box sos-premium-box';
-  box.style.cssText = `
-    position: relative;
-    border: 1.5px solid var(--coral);
-    border-radius: 14px;
-    background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-subtle) 100%);
-    box-shadow: 0 20px 60px rgba(255, 71, 87, 0.18);
-    max-width: 440px;
-    max-height: 92vh;
-    overflow-y: auto;
-  `;
-
-  box.innerHTML = `
-    <button type="button" id="sosCloseBtn" aria-label="Close" style="position:absolute; top:14px; right:14px; background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
-
-    <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding:6px 4px 14px;">
-      <div class="sos-siren-ring" style="width:56px; height:56px; border-radius:50%; background:var(--coral); display:flex; align-items:center; justify-content:center; font-size:26px; margin-bottom:10px;">🆘</div>
-      <div style="font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; color:var(--coral); font-weight:700;">CRITICAL PROTOCOL ACTIVE</div>
-      <div style="font-size:19px; font-weight:800; color:var(--text-primary); margin-top:2px;">Emergency Assistance</div>
-    </div>
-
-    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
-      <a href="tel:108" style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-radius:10px; background:var(--coral); color:#fff; font-weight:800; text-decoration:none; font-size:15px; box-shadow:0 6px 18px rgba(255,71,87,0.35);">
-        <span>🚑 Call Ambulance</span>
-        <span style="font-family:var(--font-mono); font-size:18px;">108</span>
-      </a>
-      <a href="tel:104" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:10px; background:var(--bg-subtle); border:1px solid var(--border-subtle); color:var(--text-primary); font-weight:700; text-decoration:none; font-size:14px;">
-        <span>☎️ Health Helpline</span>
-        <span style="font-family:var(--font-mono); font-size:16px;">104</span>
-      </a>
-    </div>
-
-    <div id="sosNearestHospital" style="background:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:10px; padding:11px 13px; font-size:12.5px; color:var(--text-secondary); margin-bottom:14px;">
-      📍 Locating nearest hospital…
-    </div>
-
-    <div id="sosNotifyStatus" style="font-size:12.5px; color:var(--teal); margin-bottom:8px; min-height:16px;"></div>
-    <div id="emergencyContactBlock" style="margin-bottom:14px;"></div>
-
-    <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%; border-radius:10px;">Dismiss</button>
-=======
   box.className = 'settings-box emergency-dialog';
 
   // State tracking for SOS Location & Google Maps Navigation:
@@ -2667,7 +2393,6 @@ function showEmergencyPanel(autoNotify = false) {
 
       <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%;">Dismiss Emergency Protocol</button>
     </div>
->>>>>>> 408d11c4d1ccf07731f4a89c6767f934a1c90e41
   `;
 
   overlay.appendChild(box);
@@ -2678,59 +2403,6 @@ function showEmergencyPanel(autoNotify = false) {
   box.querySelector('#sosCloseActionBtn').onclick = closeMe;
   overlay.onclick = (e) => { if (e.target === overlay) closeMe(); };
 
-<<<<<<< HEAD
-  const contactBlock = box.querySelector('#emergencyContactBlock');
-  const notifyStatus = box.querySelector('#sosNotifyStatus');
-  const nearestBox = box.querySelector('#sosNearestHospital');
-
-  // Use whatever location we already have, immediately - speed matters.
-  const quick = peekCachedLocation(30 * 60 * 1000);
-  sosCoords = { lat: quick ? quick.lat : null, lon: quick ? quick.lon : null };
-  renderSosContactsBlock(contactBlock, notifyStatus);
-
-  // Real emergency detected from the chat: open WhatsApp for every saved
-  // contact right now. Browsers can block extra tabs opened without a
-  // fresh click, so we report honestly and the buttons below always work.
-  if (autoNotify) {
-    const contacts = loadEmergencyContacts();
-    if (!contacts.length) {
-      notifyStatus.style.color = 'var(--coral)';
-      notifyStatus.textContent = '⚠ No emergency contacts saved yet - add one below so you can alert them in one tap next time.';
-    } else {
-      const r = openWhatsAppForAll(sosCoords.lat, sosCoords.lon);
-      if (r.blocked === 0) {
-        notifyStatus.textContent = `✓ WhatsApp opened for ${r.opened} contact${r.opened > 1 ? 's' : ''} - tap Send in each chat.`;
-      } else {
-        notifyStatus.style.color = 'var(--coral)';
-        notifyStatus.textContent = `Your browser blocked ${r.blocked} automatic tab${r.blocked > 1 ? 's' : ''} - tap the green WhatsApp buttons below to alert each contact.`;
-      }
-    }
-  }
-
-  // Then upgrade to a fresh GPS fix: refreshes the WhatsApp links with the
-  // accurate location and finds the nearest hospital.
-  getCachedOrFreshLocation(2 * 60 * 1000)
-    .then(async ({ lat, lon }) => {
-      sosCoords = { lat, lon };
-      refreshSosLinks(contactBlock);
-      try {
-        const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=20&limit=1`);
-        const data = await res.json();
-        if (data.doctors && data.doctors.length) {
-          const h = data.doctors[0];
-          const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
-          nearestBox.innerHTML = `📍 Nearest: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
-            (firstPhone ? ` — <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--teal); font-weight:700;">${escapeHtml(firstPhone)}</a>` : '');
-        } else {
-          nearestBox.textContent = 'No listed facility within 20 km. Use the direct lines above.';
-        }
-      } catch (e) {
-        nearestBox.textContent = 'Could not resolve facility — use the emergency hotlines.';
-      }
-    })
-    .catch(() => {
-      nearestBox.textContent = 'Location unavailable — dial 108 or 104.';
-=======
   const contentArea = box.querySelector('#sosLocationContent');
   const contactArea = box.querySelector('#sosContactSection');
 
@@ -3014,7 +2686,6 @@ function showEmergencyPanel(autoNotify = false) {
           navBtn.innerHTML = `<span>🗺️ Start Turn-by-Turn Navigation (${currentTravelMode.toUpperCase()})</span> <span style="font-size:11px; opacity:0.85;">↗</span>`;
         }
       };
->>>>>>> 408d11c4d1ccf07731f4a89c6767f934a1c90e41
     });
 
     // Facility chip switcher
@@ -3176,89 +2847,7 @@ function showEmergencyPanel(autoNotify = false) {
   loadEmergencyLocation(false);
 }
 
-// Updates every WhatsApp button's link in place with the latest coordinates
-// (does not re-render, so anything being typed in the add-form is kept).
-function refreshSosLinks(block) {
-  if (!block) return;
-  const contacts = loadEmergencyContacts();
-  const msg = buildEmergencyMessage(sosCoords.lat, sosCoords.lon);
-  block.querySelectorAll('a[data-wa]').forEach(a => {
-    const c = contacts[parseInt(a.dataset.wa, 10)];
-    if (c) a.href = whatsappLink(c.phone, msg);
-  });
-}
-
-// SOS contacts block: one row per saved contact with direct WhatsApp + Call
-// buttons (real anchor taps, so never popup-blocked), plus an add form.
-function renderSosContactsBlock(block, statusEl) {
-  if (!block) return;
-  const contacts = loadEmergencyContacts();
-  const msg = buildEmergencyMessage(sosCoords.lat, sosCoords.lon);
-
-  let html = '';
-  if (contacts.length) {
-    html += `<div style="font-size:11px; font-family:var(--font-mono); letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">YOUR EMERGENCY CONTACTS</div>`;
-    html += contacts.map((c, i) => `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; margin-bottom:6px; border:1px solid var(--border-subtle); border-radius:10px; background:var(--bg-subtle);">
-        <div style="min-width:0;">
-          <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.name)}</div>
-          <div style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(c.relation || 'contact')} · ${escapeHtml(c.phone)}</div>
-        </div>
-        <div style="display:flex; gap:6px; flex-shrink:0;">
-          <a data-wa="${i}" href="${whatsappLink(c.phone, msg)}" target="_blank" rel="noopener" style="padding:7px 10px; border-radius:8px; background:#25D366; color:#fff; font-weight:700; font-size:12.5px; text-decoration:none;">💬 WhatsApp</a>
-          <a href="tel:+${normalizePhone(c.phone)}" style="padding:7px 10px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-primary); font-weight:700; font-size:12.5px; text-decoration:none;">📞 Call</a>
-        </div>
-      </div>
-    `).join('');
-    html += `<button id="waAllBtn" class="btn-subtle" style="width:100%; margin:2px 0 10px; border-color:#25D366; color:#25D366; font-weight:700;">💬 Message everyone at once</button>`;
-  } else {
-    html += `<div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px;">No emergency contacts saved yet. Add one - it is stored only in this browser:</div>`;
-  }
-
-  html += `
-    <details ${contacts.length ? '' : 'open'} style="margin-top:2px;">
-      <summary style="cursor:pointer; font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">${contacts.length ? '+ Add another contact' : 'Add contact'}</summary>
-      <div style="display:flex; gap:6px; margin:6px 0;">
-        <input id="ecName" placeholder="Name" style="flex:1; padding:7px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-        <input id="ecPhone" placeholder="Phone (+country code)" style="flex:1; padding:7px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
-      </div>
-      <button id="ecSaveBtn" class="btn-subtle" style="width:100%;">Save contact</button>
-    </details>
-  `;
-  block.innerHTML = html;
-
-  const waAll = block.querySelector('#waAllBtn');
-  if (waAll) {
-    waAll.onclick = () => {
-      const r = openWhatsAppForAll(sosCoords.lat, sosCoords.lon);
-      if (statusEl) {
-        if (r.blocked === 0) {
-          statusEl.style.color = 'var(--teal)';
-          statusEl.textContent = `✓ WhatsApp opened for ${r.opened} contact${r.opened > 1 ? 's' : ''} - tap Send in each chat.`;
-        } else {
-          statusEl.style.color = 'var(--coral)';
-          statusEl.textContent = `Browser blocked ${r.blocked} tab${r.blocked > 1 ? 's' : ''} - use the green WhatsApp buttons above for those contacts.`;
-        }
-      }
-    };
-  }
-
-  const saveBtn = block.querySelector('#ecSaveBtn');
-  if (saveBtn) {
-    saveBtn.onclick = () => {
-      const name = block.querySelector('#ecName').value.trim();
-      const phone = block.querySelector('#ecPhone').value.trim();
-      if (!phone || normalizePhone(phone).length < 10) {
-        if (statusEl) { statusEl.style.color = 'var(--coral)'; statusEl.textContent = 'Enter a valid phone number (with country code).'; }
-        return;
-      }
-      addEmergencyContact(name || 'Emergency contact', phone, '');
-      renderSosContactsBlock(block, statusEl);
-    };
-  }
-}
-
-// --- 17. CLINICAL DIRECTORY & LOCATION INTEGRATION ---
+// --- 16. CLINICAL DIRECTORY & LOCATION INTEGRATION ---
 
 const INDIA_HEALTH_HELPLINES = [
   { name: "National Health Helpline", phone: "104" },
@@ -3366,22 +2955,17 @@ function renderNearbyCard(doctors) {
   if (doctors.length) {
     html += '<div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">';
     doctors.forEach(d => {
-      const firstPhone = d.phone ? String(d.phone).split(';')[0].trim() : '';
       html += `
         <div style="background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:4px; font-size:13px;">
           <div style="font-weight:600; color:var(--text-primary);">${escapeHtml(d.name)}</div>
           <div style="color:var(--text-muted); font-size:12px;">${escapeHtml(d.specialty)} ${d.distance_km ? `· ${d.distance_km} km away` : ''}</div>
           ${d.address ? `<div style="color:var(--text-secondary); font-size:11.5px; margin-top:2px;">${escapeHtml(d.address)}</div>` : ''}
-<<<<<<< HEAD
-          ${firstPhone ? `<div style="margin-top:6px;"><a href="tel:${escapeHtml(firstPhone.replace(/\D/g, ''))}" style="color:var(--teal); font-weight:600;">📞 Call ${escapeHtml(firstPhone)}</a></div>` : ''}
-=======
           <div style="display:flex; gap:12px; margin-top:8px; align-items:center; flex-wrap:wrap;">
             ${d.phone ? `<a href="tel:${escapeHtml(d.phone.replace(/\D/g, ''))}" style="color:var(--teal); font-weight:600; text-decoration:none;">📞 Call ${escapeHtml(d.phone)}</a>` : ''}
             <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((d.lat != null && d.lon != null) ? `${d.lat},${d.lon}` : d.name)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-purple); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:12px;">
               <span>🗺️ Google Maps Directions</span>
             </a>
           </div>
->>>>>>> 408d11c4d1ccf07731f4a89c6767f934a1c90e41
         </div>
       `;
     });
@@ -3398,7 +2982,7 @@ function renderNearbyCard(doctors) {
   scrollToBottom();
 }
 
-// --- 18. GLOBAL SHORTCUTS & ESCAPE LISTENER ---
+// --- 17. GLOBAL SHORTCUTS & ESCAPE LISTENER ---
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
     e.preventDefault();
@@ -3422,6 +3006,3 @@ document.addEventListener('keydown', (e) => {
     else if (sidebarEl && sidebarEl.classList.contains('open')) toggleSidebar(false);
   }
 });
-
-// Sync the camera UI with the saved source preference on load
-setCameraSource(currentCameraSource);
