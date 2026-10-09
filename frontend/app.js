@@ -2157,38 +2157,66 @@ function showEmergencyPanel() {
   overlay.style.zIndex = '999';
 
   const box = document.createElement('div');
-  box.className = 'settings-box';
-  box.style.border = '1px solid var(--coral)';
+  box.className = 'settings-box emergency-dialog';
+
+  // State tracking for SOS Location & Google Maps Navigation:
+  let originData = null; // { lat, lon, label }
+  let destinationData = null; // { id, name, lat, lon, address, phone, distance_km }
+  let currentTravelMode = 'driving'; // 'driving', 'walking', 'transit'
+  let currentDirFlg = 'd'; // 'd', 'w', 'r'
+  let nearbyHospitalsList = [];
 
   box.innerHTML = `
     <div class="dialog-header">
       <div class="dialog-title-group">
-        <div class="dialog-badge" style="color:var(--coral);">CRITICAL PROTOCOL</div>
+        <div class="dialog-badge" style="color:var(--coral); display:flex; align-items:center; gap:6px;">
+          <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--coral); box-shadow:0 0 8px var(--coral); animation:pulse-dot 1.5s infinite;"></span>
+          CRITICAL PROTOCOL
+        </div>
         <div class="dialog-title" style="color:var(--coral);">Immediate Emergency Assistance</div>
       </div>
       <button type="button" class="dialog-close-btn" id="sosCloseBtn" aria-label="Close">✕</button>
     </div>
 
-    <p style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
-      If you or someone nearby is experiencing chest pain, acute respiratory distress, or severe symptoms, call directly now:
-    </p>
+    <div class="sos-dialog-body">
+      <p style="font-size:13px; color:var(--text-secondary); margin:0;">
+        If you or someone nearby is experiencing chest pain, acute respiratory distress, severe trauma, or urgent symptoms, call emergency services directly:
+      </p>
 
-    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
-      <a href="tel:108" style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:4px; background-color:var(--coral); color:#ffffff; font-weight:700; text-decoration:none;">
-        <span>Call Ambulance</span>
-        <span style="font-family:var(--font-mono); font-size:16px;">108</span>
-      </a>
-      <a href="tel:104" style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:4px; background-color:var(--bg-subtle); border:1px solid var(--border-subtle); color:var(--text-primary); font-weight:700; text-decoration:none;">
-        <span>National Health Helpline</span>
-        <span style="font-family:var(--font-mono); font-size:16px;">104</span>
-      </a>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <a href="tel:108" style="display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-radius:var(--radius-sm); background-color:var(--coral); color:#ffffff; font-weight:700; text-decoration:none; box-shadow:0 3px 12px rgba(244,63,94,0.3);">
+          <span>🚨 Call Ambulance</span>
+          <span style="font-family:var(--font-mono); font-size:15px;">108</span>
+        </a>
+        <a href="tel:104" style="display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-radius:var(--radius-sm); background-color:var(--bg-subtle); border:1px solid var(--border-subtle); color:var(--text-primary); font-weight:700; text-decoration:none;">
+          <span>📞 Health Helpline</span>
+          <span style="font-family:var(--font-mono); font-size:15px;">104</span>
+        </a>
+      </div>
+
+      <!-- SOS Location & Google Map Route Section -->
+      <div id="sosLocationSection" class="sos-card-container">
+        <div class="sos-location-header">
+          <div class="sos-location-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--coral);"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+            <span>Live Emergency Navigation</span>
+          </div>
+          <span class="sos-google-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+            Google Maps
+          </span>
+        </div>
+
+        <div id="sosLocationContent">
+          <div id="sosLocationLoading" style="display:flex; align-items:center; gap:10px; padding:16px 12px; background:var(--bg-subtle); border-radius:var(--radius-sm); border:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12.5px;">
+            <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid var(--coral); border-top-color:transparent; animation:spin 0.8s linear infinite; flex-shrink:0;"></span>
+            <span>Acquiring GPS location telemetry and calculating route to nearest hospital…</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%;">Dismiss Emergency Protocol</button>
     </div>
-
-    <div id="sosNearestHospital" style="background-color:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:4px; padding:10px 12px; font-size:12.5px; color:var(--text-secondary); margin-bottom:16px;">
-      Locating nearest clinic via GPS telemetry…
-    </div>
-
-    <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%;">Dismiss Emergency Protocol</button>
   `;
 
   overlay.appendChild(box);
@@ -2199,30 +2227,311 @@ function showEmergencyPanel() {
   box.querySelector('#sosCloseActionBtn').onclick = closeMe;
   overlay.onclick = (e) => { if (e.target === overlay) closeMe(); };
 
-  const nearestBox = overlay.querySelector('#sosNearestHospital');
+  const contentArea = box.querySelector('#sosLocationContent');
 
-  // Shorter cache window here than the general "nearby doctors" lookup -
-  // freshness matters more when it's an emergency.
-  getCachedOrFreshLocation(2 * 60 * 1000)
-    .then(async ({ lat, lon }) => {
-      try {
-        const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=20&limit=1`);
-        const data = await res.json();
-        if (data.doctors && data.doctors.length) {
-          const h = data.doctors[0];
-          const firstPhone = h.phone ? h.phone.split(';')[0].trim() : null;
-          nearestBox.innerHTML = `Nearest Hospital: <b>${escapeHtml(h.name)}</b> (${h.distance_km} km)` +
-            (firstPhone ? ` — <a href="tel:${firstPhone.replace(/\D/g, '')}" style="color:var(--teal); font-weight:700;">${escapeHtml(firstPhone)}</a>` : '');
-        } else {
-          nearestBox.textContent = 'No listed facility within 20 km. Use the direct lines above.';
+  function getEmbedAndNavUrls() {
+    if (!originData || !destinationData) return { embedUrl: '', navUrl: '' };
+
+    const originParam = (originData.lat != null && originData.lon != null)
+      ? `${originData.lat},${originData.lon}`
+      : originData.label;
+
+    const destParam = (destinationData.lat != null && destinationData.lon != null)
+      ? `${destinationData.lat},${destinationData.lon}`
+      : (destinationData.address ? `${destinationData.name}, ${destinationData.address}` : destinationData.name);
+
+    const embedUrl = `https://maps.google.com/maps?saddr=${encodeURIComponent(originParam)}&daddr=${encodeURIComponent(destParam)}&dirflg=${currentDirFlg}&output=embed`;
+    const navUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originParam)}&destination=${encodeURIComponent(destParam)}&travelmode=${currentTravelMode}`;
+
+    return { embedUrl, navUrl };
+  }
+
+  function renderMapRouteUI() {
+    if (!originData || !destinationData) return;
+
+    const { embedUrl, navUrl } = getEmbedAndNavUrls();
+    const phone = destinationData.phone ? destinationData.phone.split(';')[0].trim() : null;
+    const destMetaParts = [];
+    if (destinationData.distance_km != null) destMetaParts.push(`${destinationData.distance_km} km away`);
+    if (destinationData.address) destMetaParts.push(destinationData.address);
+    const destMetaStr = destMetaParts.join(' · ') || 'Emergency Healthcare Facility';
+
+    const originText = (originData.lat != null && originData.lon != null)
+      ? `GPS: ${originData.lat.toFixed(4)}°, ${originData.lon.toFixed(4)}°`
+      : escapeHtml(originData.label);
+
+    let chipsHtml = '';
+    if (nearbyHospitalsList && nearbyHospitalsList.length > 1) {
+      chipsHtml = nearbyHospitalsList.map(h => {
+        const isActive = (destinationData.id && h.id === destinationData.id) || (h.name === destinationData.name);
+        return `
+          <button type="button" class="sos-facility-chip ${isActive ? 'active' : ''}" data-hospital-id="${h.id || ''}" data-hospital-name="${escapeHtml(h.name)}">
+            <span>🏥</span>
+            <span>${escapeHtml(h.name)}</span>
+            <span style="opacity:0.75; font-size:10.5px;">(${h.distance_km} km)</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    contentArea.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="sos-route-summary">
+          <div class="sos-route-point">
+            <div class="sos-point-icon" style="color:#38bdf8;">📍</div>
+            <div class="sos-point-content">
+              <div class="sos-point-label">Your Current Location (Origin)</div>
+              <div class="sos-point-val" id="sosOriginDisplay">${originText}</div>
+              <div class="sos-point-meta" style="display:flex; align-items:center; gap:8px;">
+                <span>Live Location Telemetry</span>
+                <button type="button" id="sosRefreshLocBtn" class="btn-subtle" style="padding:2px 7px; font-size:10.5px; border-radius:3px; cursor:pointer;">🔄 Refresh GPS</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px dashed var(--border-subtle); margin:2px 0;"></div>
+
+          <div class="sos-route-point">
+            <div class="sos-point-icon" style="color:var(--coral);">🏥</div>
+            <div class="sos-point-content">
+              <div class="sos-point-label">Destination Facility</div>
+              <div class="sos-point-val" id="sosDestName">${escapeHtml(destinationData.name)}</div>
+              <div class="sos-point-meta" id="sosDestMeta">${escapeHtml(destMetaStr)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Travel Mode Selector -->
+        <div class="sos-mode-selector">
+          <button type="button" class="sos-mode-btn ${currentTravelMode === 'driving' ? 'active' : ''}" data-mode="driving" data-dir="d">
+            <span>🚗</span> Drive (Fastest)
+          </button>
+          <button type="button" class="sos-mode-btn ${currentTravelMode === 'walking' ? 'active' : ''}" data-mode="walking" data-dir="w">
+            <span>🚶</span> Walk
+          </button>
+          <button type="button" class="sos-mode-btn ${currentTravelMode === 'transit' ? 'active' : ''}" data-mode="transit" data-dir="r">
+            <span>🚌</span> Transit
+          </button>
+        </div>
+
+        <!-- Embedded Google Map -->
+        <div class="sos-map-viewport">
+          <iframe id="sosMapIframe" class="sos-map-iframe" src="${embedUrl}" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Google Map Directions"></iframe>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="sos-actions-row">
+          <a id="sosNavBtn" href="${navUrl}" target="_blank" rel="noopener noreferrer" class="btn-sos-navigate">
+            <span>🗺️ Start Turn-by-Turn Navigation (${currentTravelMode.toUpperCase()})</span>
+            <span style="font-size:11px; opacity:0.85;">↗</span>
+          </a>
+          ${phone ? `
+            <a id="sosCallBtn" href="tel:${phone.replace(/\D/g, '')}" class="btn-sos-call">
+              📞 Call ${escapeHtml(phone)}
+            </a>
+          ` : ''}
+        </div>
+
+        ${chipsHtml ? `
+          <div class="sos-facilities-chips-container">
+            <div class="sos-facilities-label">Other Nearby Facilities:</div>
+            <div class="sos-facilities-chips">
+              ${chipsHtml}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Custom Destination Toggle & Input -->
+        <div style="margin-top:2px;">
+          <button type="button" id="sosCustomDestToggle" class="sos-custom-search-toggle">
+            <span>🔍 Route to a specific hospital or address</span>
+          </button>
+          <div id="sosCustomInputBar" class="sos-custom-input-bar">
+            <input id="sosCustomDestInput" placeholder="Enter hospital name or destination address..." style="flex:1; padding:7px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:12.5px;">
+            <button type="button" id="sosCustomDestApplyBtn" class="btn-execute" style="padding:7px 14px; font-size:12px; white-space:nowrap;">Route</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    bindMapControls();
+  }
+
+  function bindMapControls() {
+    // Mode switcher
+    contentArea.querySelectorAll('.sos-mode-btn').forEach(btn => {
+      btn.onclick = () => {
+        contentArea.querySelectorAll('.sos-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTravelMode = btn.dataset.mode;
+        currentDirFlg = btn.dataset.dir;
+        const { embedUrl, navUrl } = getEmbedAndNavUrls();
+        const iframe = contentArea.querySelector('#sosMapIframe');
+        const navBtn = contentArea.querySelector('#sosNavBtn');
+        if (iframe) iframe.src = embedUrl;
+        if (navBtn) {
+          navBtn.href = navUrl;
+          navBtn.innerHTML = `<span>🗺️ Start Turn-by-Turn Navigation (${currentTravelMode.toUpperCase()})</span> <span style="font-size:11px; opacity:0.85;">↗</span>`;
         }
-      } catch (e) {
-        nearestBox.textContent = 'Could not resolve facility — use the emergency hotlines.';
-      }
-    })
-    .catch(() => {
-      nearestBox.textContent = 'Location telemetry unavailable — dial 108 or 104.';
+      };
     });
+
+    // Facility chip switcher
+    contentArea.querySelectorAll('.sos-facility-chip').forEach(chip => {
+      chip.onclick = () => {
+        const hid = chip.dataset.hospitalId;
+        const hname = chip.dataset.hospitalName;
+        const match = nearbyHospitalsList.find(h => (hid && String(h.id) === hid) || h.name === hname);
+        if (match) {
+          destinationData = { ...match };
+          renderMapRouteUI();
+        }
+      };
+    });
+
+    // Refresh GPS
+    const refreshBtn = contentArea.querySelector('#sosRefreshLocBtn');
+    if (refreshBtn) {
+      refreshBtn.onclick = () => {
+        try { localStorage.removeItem(LOCATION_CACHE_KEY); } catch (e) {}
+        loadEmergencyLocation(true);
+      };
+    }
+
+    // Custom destination input toggle & apply
+    const customToggle = contentArea.querySelector('#sosCustomDestToggle');
+    const customBar = contentArea.querySelector('#sosCustomInputBar');
+    const customInput = contentArea.querySelector('#sosCustomDestInput');
+    const customApply = contentArea.querySelector('#sosCustomDestApplyBtn');
+
+    if (customToggle && customBar) {
+      customToggle.onclick = () => {
+        customBar.classList.toggle('open');
+        if (customBar.classList.contains('open') && customInput) customInput.focus();
+      };
+    }
+
+    const applyCustom = () => {
+      const val = customInput ? customInput.value.trim() : '';
+      if (!val) return;
+      destinationData = {
+        id: 'custom-' + Date.now(),
+        name: val,
+        lat: null,
+        lon: null,
+        address: 'Custom Emergency Destination',
+        phone: null,
+        distance_km: null
+      };
+      renderMapRouteUI();
+    };
+
+    if (customApply) customApply.onclick = applyCustom;
+    if (customInput) {
+      customInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyCustom();
+      });
+    }
+  }
+
+  function renderLocationFallbackUI(errorMsg) {
+    contentArea.innerHTML = `
+      <div style="background:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px; font-size:12.5px; color:var(--text-secondary); display:flex; flex-direction:column; gap:10px;">
+        <div style="font-weight:600; color:var(--coral); display:flex; align-items:center; gap:6px;">
+          <span>⚠️</span> GPS Location Access Unavailable
+        </div>
+        <p style="margin:0; line-height:1.4;">
+          ${escapeHtml(errorMsg || 'Unable to detect your exact GPS coordinates automatically.')} You can enter your current location to plot the Google Map directions, or open Google Maps directly:
+        </p>
+        <div style="display:flex; gap:8px;">
+          <input id="sosManualOriginInput" placeholder="Enter your current city or area (e.g. Salt Lake, Kolkata)..." style="flex:1; padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); background:var(--bg-surface-elevated); color:var(--text-primary); font-size:12.5px;">
+          <button type="button" id="sosManualRouteBtn" class="btn-execute" style="padding:8px 14px; font-size:12px; white-space:nowrap;">Get Directions</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:2px;">
+          <a href="https://www.google.com/maps/search/nearest+emergency+hospital" target="_blank" rel="noopener noreferrer" class="btn-sos-navigate" style="flex:1;">
+            <span>🗺️ Search Nearest Hospitals on Google Maps</span>
+            <span style="font-size:11px; opacity:0.85;">↗</span>
+          </a>
+        </div>
+      </div>
+    `;
+
+    const manualInput = contentArea.querySelector('#sosManualOriginInput');
+    const manualBtn = contentArea.querySelector('#sosManualRouteBtn');
+    const handleManual = () => {
+      const area = manualInput ? manualInput.value.trim() : '';
+      if (!area) return;
+      originData = { lat: null, lon: null, label: area };
+      destinationData = {
+        name: 'Nearest Emergency Hospital',
+        lat: null,
+        lon: null,
+        address: 'Resolving route via Google Maps',
+        phone: null,
+        distance_km: null
+      };
+      renderMapRouteUI();
+    };
+    if (manualBtn) manualBtn.onclick = handleManual;
+    if (manualInput) {
+      manualInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleManual();
+      });
+    }
+  }
+
+  function loadEmergencyLocation(forceFresh = false) {
+    contentArea.innerHTML = `
+      <div id="sosLocationLoading" style="display:flex; align-items:center; gap:10px; padding:16px 12px; background:var(--bg-subtle); border-radius:var(--radius-sm); border:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12.5px;">
+        <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid var(--coral); border-top-color:transparent; animation:spin 0.8s linear infinite; flex-shrink:0;"></span>
+        <span>${forceFresh ? 'Fetching fresh GPS coordinates…' : 'Acquiring GPS location telemetry and calculating route to nearest hospital…'}</span>
+      </div>
+    `;
+
+    getCachedOrFreshLocation(forceFresh ? 0 : 2 * 60 * 1000)
+      .then(async ({ lat, lon }) => {
+        originData = { lat, lon, label: `${lat.toFixed(4)}, ${lon.toFixed(4)}` };
+
+        try {
+          const res = await fetch(`${API}/directory/search?lat=${lat}&lon=${lon}&radius_km=25&limit=4`);
+          const data = await res.json();
+          if (data.doctors && data.doctors.length) {
+            nearbyHospitalsList = data.doctors;
+            destinationData = { ...nearbyHospitalsList[0] };
+          } else {
+            // No doctors in local DB radius -> Google Maps fallback
+            nearbyHospitalsList = [];
+            destinationData = {
+              name: 'Nearest Emergency Hospital',
+              lat: null,
+              lon: null,
+              address: 'Auto-resolved via Google Maps navigation',
+              phone: null,
+              distance_km: null
+            };
+          }
+        } catch (e) {
+          // Backend offline or error -> Google Maps still resolves route!
+          nearbyHospitalsList = [];
+          destinationData = {
+            name: 'Nearest Emergency Hospital',
+            lat: null,
+            lon: null,
+            address: 'Direct Google Maps Emergency Routing',
+            phone: null,
+            distance_km: null
+          };
+        }
+
+        renderMapRouteUI();
+      })
+      .catch((err) => {
+        renderLocationFallbackUI(err && err.message ? err.message : 'Location telemetry unavailable.');
+      });
+  }
+
+  // Initial load
+  loadEmergencyLocation(false);
 }
 
 // --- 16. CLINICAL DIRECTORY & LOCATION INTEGRATION ---
@@ -2338,7 +2647,12 @@ function renderNearbyCard(doctors) {
           <div style="font-weight:600; color:var(--text-primary);">${escapeHtml(d.name)}</div>
           <div style="color:var(--text-muted); font-size:12px;">${escapeHtml(d.specialty)} ${d.distance_km ? `· ${d.distance_km} km away` : ''}</div>
           ${d.address ? `<div style="color:var(--text-secondary); font-size:11.5px; margin-top:2px;">${escapeHtml(d.address)}</div>` : ''}
-          ${d.phone ? `<div style="margin-top:6px;"><a href="tel:${escapeHtml(d.phone.replace(/\\D/g, ''))}" style="color:var(--teal); font-weight:600;">📞 Call ${escapeHtml(d.phone)}</a></div>` : ''}
+          <div style="display:flex; gap:12px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+            ${d.phone ? `<a href="tel:${escapeHtml(d.phone.replace(/\D/g, ''))}" style="color:var(--teal); font-weight:600; text-decoration:none;">📞 Call ${escapeHtml(d.phone)}</a>` : ''}
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((d.lat != null && d.lon != null) ? `${d.lat},${d.lon}` : d.name)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-purple); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+              <span>🗺️ Google Maps Directions</span>
+            </a>
+          </div>
         </div>
       `;
     });

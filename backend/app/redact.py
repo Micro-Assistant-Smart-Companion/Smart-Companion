@@ -1,6 +1,13 @@
 import spacy
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except Exception:
+    try:
+        nlp = spacy.blank("en")
+    except Exception:
+        nlp = None
+
 SENSITIVE_LABELS = {"PERSON", "ORG", "GPE", "LOC", "DATE", "TIME"}
 
 SAFE_WORDS = {
@@ -10,6 +17,8 @@ SAFE_WORDS = {
 
 
 def redact_text(text: str) -> str:
+    if not nlp:
+        return text
     doc = nlp(text)
     redacted = text
     for ent in doc.ents:
