@@ -4,7 +4,13 @@ import time
 import uuid
 import base64
 import threading
-import pymupdf as fitz  # PyMuPDF
+try:
+    import pymupdf as fitz  # PyMuPDF
+except ImportError:
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
 from groq import Groq
 from visual.semantic_search import find_relevant_pages
 

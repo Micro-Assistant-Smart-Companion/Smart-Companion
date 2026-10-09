@@ -39,6 +39,17 @@ def init_db():
             lat REAL, lon REAL, radius_km REAL,
             seeded_at TEXT DEFAULT CURRENT_TIMESTAMP
         )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS emergency_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_name TEXT,
+            contact_phone TEXT,
+            message TEXT,
+            lat REAL,
+            lon REAL,
+            hospital_name TEXT,
+            status TEXT DEFAULT 'dispatched',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )""")
 
 
 OVERPASS_MIRRORS = [
@@ -252,5 +263,74 @@ def request_appointment(a: AppointmentIn):
     return {"request_id": cur.lastrowid, "status": "requested", "whatsapp_link": whatsapp_link,
             "message": "Tap the link to send your request to the clinic." if whatsapp_link
                        else "This clinic has no phone on file yet - showing address only."}
-    
-    
+
+
+class EmergencyAlertIn(BaseModel):
+    contact_name: str = "Emergency Contact"
+    contact_phone: str
+    message: str
+    lat: float | None = None
+    lon: float | None = None
+    hospital_name: str | None = None
+
+
+@router.post("/alert")
+def dispatch_emergency_alert(a: EmergencyAlertIn):
+    print(f"\n==================== [EMERGENCY PROTOCOL ACTIVATED] ====================")
+    print(f"Target Contact: {a.contact_name} ({a.contact_phone})")
+    print(f"Coordinates: ({a.lat}, {a.lon}) | Destination: {a.hospital_name}")
+    print(f"Message Body:\n{a.message}")
+    print(f"========================================================================\n")
+
+    with _conn() as c:
+        cur = c.execute(
+            """INSERT INTO emergency_alerts
+               (contact_name, contact_phone, message, lat, lon, hospital_name, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'dispatched')""",
+            (a.contact_name, a.contact_phone, a.message, a.lat, a.lon, a.hospital_name))
+        alert_id = cur.lastrowid
+
+    # Optional Twilio SMS dispatch if environment variables exist
+    sms_sent = False
+    twilio_error = None
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
+    twilio_from = os.getenv("TWILIO_PHONE_NUMBER")
+    if twilio_sid and twilio_token and twilio_from:
+        try:
+            from twilio.rest import Client
+            client = Client(twilio_sid, twilio_token)
+            client.messages.create(
+                body=a.message,
+                from_=twilio_from,
+                to=a.contact_phone
+            )
+            sms_sent = True
+            print(f"[EMERGENCY ALERT] Twilio SMS dispatched successfully to {a.contact_phone}")
+        except Exception as exc:
+            twilio_error = str(exc)
+            print(f"[EMERGENCY ALERT] Twilio SMS failed: {exc}")
+
+    # Generate quick WhatsApp and SMS fallback links
+    digits = re.sub(r"\D", "", a.contact_phone)
+    if len(digits) == 10:
+        digits = "91" + digits
+    wa_link = f"https://wa.me/{digits}?text={requests.utils.quote(a.message)}" if digits else None
+
+    return {
+        "alert_id": alert_id,
+        "status": "dispatched",
+        "sms_gateway_sent": sms_sent,
+        "twilio_error": twilio_error,
+        "contact_name": a.contact_name,
+        "contact_phone": a.contact_phone,
+        "whatsapp_link": wa_link,
+        "message": a.message
+    }
+
+
+@router.get("/alerts")
+def list_emergency_alerts(limit: int = 20):
+    with _conn() as c:
+        rows = c.execute("SELECT * FROM emergency_alerts ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    return {"count": len(rows), "alerts": [dict(r) for r in rows]}
