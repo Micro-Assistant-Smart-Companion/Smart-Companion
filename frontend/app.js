@@ -220,7 +220,7 @@ let sessions = {
     stepCounter: 0,
     currentGoal: null,
     feedHTML: initialFeedHTML,
-    name: 'General Cognition',
+    name: 'General',
     sessionNote: ''
   }
 };
@@ -324,7 +324,7 @@ function renderSidebar() {
     const delBtn = document.createElement('button');
     delBtn.className = 'sidebar-del-btn';
     delBtn.type = 'button';
-    delBtn.title = 'Purge Stream';
+    delBtn.title = 'Delete conversation';
     delBtn.textContent = '✕';
     delBtn.onclick = (e) => {
       e.stopPropagation();
@@ -338,13 +338,13 @@ function renderSidebar() {
 }
 
 function deleteSession(label) {
-  if (!confirm(`Purge memory stream "${sessions[label].name}"?`)) return;
+  if (!confirm(`Delete conversation "${sessions[label].name}"?`)) return;
 
   delete sessions[label];
   if (Object.keys(sessions).length === 0) {
     sessions.general = {
       history: [], completedSteps: [], stepCounter: 0, currentGoal: null,
-      feedHTML: initialFeedHTML, name: 'General Cognition', sessionNote: ''
+      feedHTML: initialFeedHTML, name: 'General', sessionNote: ''
     };
   }
 
@@ -371,12 +371,12 @@ function deleteSession(label) {
 }
 
 function clearAllSessions() {
-  if (!confirm('Purge all memory streams and restart system context?')) return;
+  if (!confirm('Delete all conversations?')) return;
   localStorage.removeItem(SESSIONS_KEY);
   sessions = {
     general: {
       history: [], completedSteps: [], stepCounter: 0, currentGoal: null,
-      feedHTML: initialFeedHTML, name: 'General Cognition', sessionNote: ''
+      feedHTML: initialFeedHTML, name: 'General', sessionNote: ''
     }
   };
   currentLabel = 'general';
@@ -626,11 +626,6 @@ function addAssistantBubble(steps, isFinal) {
     const wrap = document.createElement('div');
     wrap.className = 'step-sequence-wrap';
 
-    const header = document.createElement('div');
-    header.className = 'step-card-header';
-    header.innerHTML = `<span>CLARIFICATION REQUIRED</span><span>1 QUERY</span>`;
-    wrap.appendChild(header);
-
     const q = document.createElement('div');
     q.style.fontSize = '15px';
     q.style.fontWeight = '500';
@@ -869,7 +864,7 @@ function addAnswerBubble(headline, stepsOrDetail) {
 
   const synthesisTag = document.createElement('div');
   synthesisTag.className = 'synthesis-header-tag';
-  synthesisTag.innerHTML = `<span>KNOWLEDGE SYNTHESIS</span><span>RETRIEVAL RESULT</span>`;
+  synthesisTag.innerHTML = `<span>Smart Companion</span>`;
   div.appendChild(synthesisTag);
 
   const headlineEl = document.createElement('div');
@@ -946,7 +941,7 @@ async function sendMessage(text) {
   history.push({ role: "user", content: text });
   currentGoal = text;
   stepCounter = 0;
-  setStatus('Deconstructing cognitive task…');
+  setStatus('Thinking…');
   if (sendBtn) sendBtn.disabled = true;
 
   try {
@@ -972,7 +967,7 @@ async function sendMessage(text) {
     setStatus('');
   } catch (err) {
     console.error('sendMessage error:', err);
-    setStatus("Backend connection error. Please verify FastAPI is running at port 8000.", true);
+    setStatus("Cannot connect right now. Please check that the app server is running.", true);
   } finally {
     if (sendBtn) sendBtn.disabled = false;
   }
@@ -980,8 +975,8 @@ async function sendMessage(text) {
 
 async function handleDone(btnEl) {
   btnEl.disabled = true;
-  btnEl.innerHTML = `<span>Retrieving Next Milestones…</span>`;
-  setStatus('Advancing task sequence…');
+  btnEl.innerHTML = `<span>Getting your next steps…</span>`;
+  setStatus('Getting your next steps…');
 
   try {
     const data = await callBackend(currentGoal, false);
@@ -998,9 +993,9 @@ async function handleDone(btnEl) {
     setStatus('');
   } catch (err) {
     console.error('handleDone error:', err);
-    setStatus("Task sequence error.", true);
+    setStatus("Something went wrong. Please try again.", true);
     btnEl.disabled = false;
-    btnEl.innerHTML = `<span>Execute Next Milestone</span><span>→</span>`;
+    btnEl.innerHTML = `<span>Next step</span><span>→</span>`;
   }
 }
 
@@ -1059,7 +1054,7 @@ if (micBtn) {
         startLiveCaptions();
         isRecording = true;
         micBtn.classList.add('recording');
-        setStatus('Capturing voice audio…');
+        setStatus('Listening…');
       } catch (err) {
         setStatus('Microphone access denied.', true);
       }
@@ -1069,7 +1064,7 @@ if (micBtn) {
       stopLiveCaptions();
       isRecording = false;
       micBtn.classList.remove('recording');
-      setStatus('Transcribing with Groq Whisper…');
+      setStatus('Turning your voice into text…');
     }
   });
 }
@@ -1091,11 +1086,11 @@ async function handleStop() {
       }
       sendMessage(data.text);
     } else {
-      setStatus("No audio deciphered.", true);
+      setStatus("Did not catch that. Please try again.", true);
     }
   } catch (err) {
     console.error('Audio transcription error:', err);
-    setStatus('Whisper transcription failed.', true);
+    setStatus('Could not understand the audio. Please try again.', true);
   }
 }
 
@@ -1262,8 +1257,8 @@ async function checkCameraStatus() {
       if (ipModalDot) ipModalDot.style.background = color;
       if (ipModalStatusText) {
         ipModalStatusText.textContent = isConnected
-          ? 'LINK ESTABLISHED: STREAM VERIFIED'
-          : (data.message || 'Stream offline or unresolved');
+          ? 'Camera connected'
+          : (data.message || 'Camera not connected');
         ipModalStatusText.style.color = color;
       }
       return data;
@@ -1272,7 +1267,7 @@ async function checkCameraStatus() {
     if (headerIpDot) headerIpDot.style.background = 'var(--text-faint)';
     if (ipModalDot) ipModalDot.style.background = 'var(--text-faint)';
     if (ipModalStatusText) {
-      ipModalStatusText.textContent = 'BACKEND OFFLINE';
+      ipModalStatusText.textContent = 'App server offline';
       ipModalStatusText.style.color = 'var(--text-muted)';
     }
   }
@@ -1303,9 +1298,9 @@ if (ipTestBtn) {
     ipTestBtn.textContent = 'Pinging…';
     const status = await checkCameraStatus();
     ipTestBtn.disabled = false;
-    ipTestBtn.textContent = 'Test Stream Link';
-    if (status && status.connected) setStatus('Optical link verified active.');
-    else setStatus('Optical link offline. Check stream endpoint.', true);
+    ipTestBtn.textContent = 'Test camera';
+    if (status && status.connected) setStatus('Camera connected.');
+    else setStatus('Camera not connected. Check the address.', true);
   });
 }
 
@@ -1329,7 +1324,7 @@ if (ipSettingsSaveBtn) {
       setStatus('Settings applied.');
       return;
     }
-    setStatus('Connecting to stream…');
+    setStatus('Connecting to camera…');
     ipSettingsSaveBtn.disabled = true;
     ipSettingsSaveBtn.textContent = 'Connecting…';
     try {
@@ -1343,12 +1338,12 @@ if (ipSettingsSaveBtn) {
         ipCameraUrlInput.value = data.url;
         setCameraSource('ipcamera');
         await checkCameraStatus();
-        setStatus(data.connected ? 'Stream link verified.' : 'Stream URL saved.');
+        setStatus(data.connected ? 'Camera connected.' : 'Camera address saved.');
       } else {
-        setStatus('Failed to update stream configuration.', true);
+        setStatus('Could not save the camera settings.', true);
       }
     } catch (err) {
-      setStatus('Backend unreachable.', true);
+      setStatus('Cannot reach the app server.', true);
     } finally {
       ipSettingsSaveBtn.disabled = false;
       ipSettingsSaveBtn.textContent = 'Save & Apply';
@@ -1415,7 +1410,7 @@ async function startSnapCapture() {
     stopIpImgPolling();
     if (snapIpImg) { snapIpImg.style.display = 'none'; snapIpImg.src = ''; }
     if (snapVideo) snapVideo.style.display = 'block';
-    if (snapHint) snapHint.textContent = 'Point webcam, then capture frame';
+    if (snapHint) snapHint.textContent = 'Point the webcam, then take a photo';
     try {
       if (!snapStream) snapStream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (snapVideo) snapVideo.srcObject = snapStream;
@@ -1433,7 +1428,7 @@ async function startSnapCapture() {
       snapIpImg.style.display = 'block';
       startIpImgPolling(snapIpImg);
     }
-    if (snapHint) snapHint.textContent = 'Point IP Camera, then capture frame';
+    if (snapHint) snapHint.textContent = 'Point the IP camera, then take a photo';
     if (snapOverlay) snapOverlay.classList.add('active');
   }
 }
@@ -1470,13 +1465,13 @@ if (snapCaptureBtn) {
         if (attachThumb) attachThumb.src = pendingImageUrl;
         if (attachPreview) attachPreview.classList.add('active');
         if (goalEl) {
-          goalEl.placeholder = "Query this optical snapshot…";
+          goalEl.placeholder = "Ask a question about this photo…";
           goalEl.focus();
         }
         stopSnapCapture();
       }, 'image/jpeg', 0.85);
     } else {
-      setStatus('Capturing IP camera frame…');
+      setStatus('Taking a picture from the IP camera…');
       try {
         const res = await fetch(`${API}/camera/frame?t=${Date.now()}`);
         if (!res.ok) throw new Error('Could not retrieve frame');
@@ -1487,13 +1482,13 @@ if (snapCaptureBtn) {
         if (attachThumb) attachThumb.src = pendingImageUrl;
         if (attachPreview) attachPreview.classList.add('active');
         if (goalEl) {
-          goalEl.placeholder = "Query this optical snapshot…";
+          goalEl.placeholder = "Ask a question about this photo…";
           goalEl.focus();
         }
         stopSnapCapture();
         setStatus('');
       } catch (err) {
-        setStatus('Failed to capture frame from stream.', true);
+        setStatus('Could not take a picture from the camera.', true);
       }
     }
   });
@@ -1513,7 +1508,7 @@ function attachPhoto(inputEl) {
   if (attachThumb) attachThumb.src = pendingImageUrl;
   if (attachPreview) attachPreview.classList.add('active');
   if (goalEl) {
-    goalEl.placeholder = "Query this optical snapshot…";
+    goalEl.placeholder = "Ask a question about this photo…";
     goalEl.focus();
   }
 }
@@ -1535,7 +1530,7 @@ if (docInput) {
     docInput.value = '';
     if (!file) return;
     clearAttachment();
-    setStatus('Indexing document pages…');
+    setStatus('Opening your document…');
     if (sendBtn) sendBtn.disabled = true;
 
     const formData = new FormData();
@@ -1550,12 +1545,12 @@ if (docInput) {
       if (docAttachLabel) docAttachLabel.textContent = `${data.filename} (${data.page_count} pages)`;
       if (docAttachPreview) docAttachPreview.classList.add('active');
       if (goalEl) {
-        goalEl.placeholder = "Query this document context…";
+        goalEl.placeholder = "Ask a question about this document…";
         goalEl.focus();
       }
-      setStatus(data.truncated ? 'Indexed first section of large document.' : '');
+      setStatus(data.truncated ? 'Opened the first part of this large document.' : '');
     } catch (err) {
-      setStatus('Document indexing failed.', true);
+      setStatus('Could not open the document. Please try again.', true);
     } finally {
       if (sendBtn) sendBtn.disabled = false;
     }
@@ -1606,7 +1601,7 @@ async function askDocument(question) {
   unlockBadge('doc', 'Bookworm');
   addUserBubble(`📄 ${question}`);
   history.push({ role: "user", content: question });
-  setStatus('Searching document vector space…');
+  setStatus('Reading your document…');
   if (sendBtn) sendBtn.disabled = true;
 
   try {
@@ -1621,7 +1616,7 @@ async function askDocument(question) {
     history.push({ role: "assistant", content: flattenAnswer(data.headline, data.detail) });
     setStatus('');
   } catch (err) {
-    setStatus('Document reasoning error.', true);
+    setStatus('Could not read the document. Please try again.', true);
   } finally {
     if (sendBtn) sendBtn.disabled = false;
   }
@@ -1631,7 +1626,7 @@ async function sendImageMessage(file, imageUrl, question) {
   unlockBadge('photo', 'Photo Detective');
   addUserBubble(question, imageUrl);
   history.push({ role: "user", content: question });
-  setStatus('Running Groq Vision inference…');
+  setStatus('Looking at your photo…');
   if (sendBtn) sendBtn.disabled = true;
 
   const formData = new FormData();
@@ -1647,7 +1642,7 @@ async function sendImageMessage(file, imageUrl, question) {
     history.push({ role: "assistant", content: flattenAnswer(data.headline, data.steps) });
     setStatus('');
   } catch (err) {
-    setStatus('Vision model inference error.', true);
+    setStatus('Could not read the photo. Please try again.', true);
   } finally {
     if (sendBtn) sendBtn.disabled = false;
   }
@@ -1669,11 +1664,11 @@ async function startGuidedSearch() {
       }
       if (liveCamVideo) liveCamVideo.srcObject = liveCamStream;
       if (liveCamOverlay) liveCamOverlay.classList.add('active');
-      setLiveCamAnswer("Webcam active. Point at any object or environment to query.");
+      setLiveCamAnswer("Webcam is on. Point it at something and ask a question.");
       speak("Webcam active.");
       if (liveCamGoal) { liveCamGoal.value = ''; liveCamGoal.focus(); }
     } catch (err) {
-      setStatus('Optical sensor access denied.', true);
+      setStatus('Camera access was blocked.', true);
     }
   } else {
     if (liveCamStream) {
@@ -1686,7 +1681,7 @@ async function startGuidedSearch() {
       startIpImgPolling(liveCamIpImg);
     }
     if (liveCamOverlay) liveCamOverlay.classList.add('active');
-    setLiveCamAnswer("IP Camera feed active. Point camera and query.");
+    setLiveCamAnswer("IP camera is on. Point it at something and ask a question.");
     speak("IP Camera active.");
     if (liveCamGoal) { liveCamGoal.value = ''; liveCamGoal.focus(); }
   }
@@ -1740,14 +1735,14 @@ async function askLiveCamera() {
   const question = liveCamGoal ? liveCamGoal.value.trim() : '';
   if (!question) return;
   liveCamGoal.value = '';
-  setLiveCamAnswer("Analyzing visual scene…", true);
+  setLiveCamAnswer("Looking at the picture…", true);
   if (liveCamSendBtn) liveCamSendBtn.disabled = true;
 
   const blob = await captureCurrentFrame();
   if (!blob) {
     setLiveCamAnswer(currentCameraSource === 'webcam'
-      ? "Optical frame acquisition failed."
-      : "Stream frame unavailable. Check network link.");
+      ? "Could not capture the picture."
+      : "Camera picture unavailable. Check the connection.");
     if (liveCamSendBtn) liveCamSendBtn.disabled = false;
     return;
   }
@@ -1764,7 +1759,7 @@ async function askLiveCamera() {
     const data = await res.json();
     if (data.error) {
       setLiveCamAnswer(data.error);
-      speak("Optical frame error.");
+      speak("Camera problem.");
     } else {
       const fullAnswer = flattenAnswer(data.headline, data.steps);
       setLiveCamAnswer(fullAnswer);
@@ -1773,7 +1768,7 @@ async function askLiveCamera() {
       history.push({ role: "assistant", content: fullAnswer });
     }
   } catch (err) {
-    setLiveCamAnswer("Vision service unreachable.");
+    setLiveCamAnswer("Cannot reach the camera helper.");
   } finally {
     if (liveCamSendBtn) liveCamSendBtn.disabled = false;
   }
@@ -1856,7 +1851,7 @@ async function describeSceneOnce() {
   } catch (e) {}
 }
 
-// --- 13. PERSONAL GROWTH & CAPABILITY PROGRESSION ---
+// --- 13. PERSONAL GROWTH & CAPABILITY PROGRESS ---
 
 const GAMIFY_KEY = 'companion_gamify';
 const PLANT_STAGES = ['🌱 Seedling', '🌿 Sprout', '🪴 Branching', '🌳 Flourishing', '🌸 Master'];
@@ -1885,12 +1880,12 @@ function celebrateStep() {
   g.plantStage = Math.min(4, Math.floor(g.totalSteps / 5));
   updateStreak(g);
   saveGamify(g);
-  showToast(`Milestone completed // Total: ${g.totalSteps}`);
+  showToast(`Step done. Total: ${g.totalSteps}`);
   renderGamifyBar();
 }
 
 function celebrateTaskDone() {
-  showToast("Sequence completed.", true);
+  showToast("All steps done. Well done!", true);
 }
 
 function updateStreak(g) {
@@ -1906,7 +1901,7 @@ function unlockBadge(name, label) {
   if (g.badges.includes(name)) return;
   g.badges.push(name);
   saveGamify(g);
-  showToast(`Capability unlocked: ${label}`);
+  showToast(`New badge: ${label}`);
 }
 
 function showToast(msg, isAccent = false) {
@@ -1959,10 +1954,10 @@ const badgesCloseBtn = document.getElementById('badgesCloseBtn');
 const badgesContainer = document.getElementById('badgesContainer');
 
 const ALL_BADGES = [
-  { id: 'voice', title: 'Voice Telemetry', desc: 'Audio transcription via Groq Whisper' },
-  { id: 'photo', title: 'Visual Analysis', desc: 'Snapshot query via Groq Vision' },
-  { id: 'doc', title: 'Document RAG', desc: 'Vector page retrieval on PDF documents' },
-  { id: 'live', title: 'Spatial Assistance', desc: 'Live optical guidance stream' },
+  { id: 'voice', title: 'Voice', desc: 'Asked a question using your voice' },
+  { id: 'photo', title: 'Photo Helper', desc: 'Asked a question about a photo' },
+  { id: 'doc', title: 'Document Reader', desc: 'Asked a question about a PDF' },
+  { id: 'live', title: 'Live Camera', desc: 'Used the live camera guide' },
 ];
 
 function showBadgesModal() {
@@ -1975,7 +1970,7 @@ function showBadgesModal() {
           <div style="font-size:16px;">${unlocked ? '✓' : '○'}</div>
           <div>
             <div class="milestone-name">${b.title}</div>
-            <div class="milestone-desc">${unlocked ? 'ACTIVE' : 'LOCKED'} // ${b.desc}</div>
+            <div class="milestone-desc">${unlocked ? 'Unlocked' : 'Locked'} - ${b.desc}</div>
           </div>
         </div>
       `;
@@ -2045,24 +2040,24 @@ function showHealthLogPanel() {
   box.innerHTML = `
     <div class="dialog-header">
       <div class="dialog-title-group">
-        <div class="dialog-badge">SECURE CLIENT STORAGE</div>
-        <div class="dialog-title">Health Telemetry Log</div>
+        <div class="dialog-badge">PRIVATE ON THIS DEVICE</div>
+        <div class="dialog-title">Health Log</div>
       </div>
       <button type="button" class="dialog-close-btn" id="hlCloseIcon" aria-label="Close">✕</button>
     </div>
 
     <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
-      Stored in encrypted local device space. Relevant metrics are contextualized only during medical sessions.
+      Saved only on this device. Used only to give better answers in medical chats.
     </p>
 
     <div style="display:flex; gap:8px; margin-bottom:8px;">
       <input id="hlType" placeholder="Metric (Glucose, BP, Mood)" style="flex:1; padding:8px 10px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
       <input id="hlValue" placeholder="Value (e.g. 110, 120/80)" style="width:140px; padding:8px 10px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px;">
     </div>
-    <input id="hlNote" placeholder="Context or clinical note (optional)" style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px; margin-bottom:12px;">
-    <button id="hlAddBtn" class="btn-execute" style="width:100%; margin-bottom:16px;">Record Telemetry</button>
+    <input id="hlNote" placeholder="Note (optional)" style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:13px; margin-bottom:12px;">
+    <button id="hlAddBtn" class="btn-execute" style="width:100%; margin-bottom:16px;">Save Entry</button>
 
-    <div style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">STORED RECORDS</div>
+    <div style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">YOUR ENTRIES</div>
     <div id="hlList" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
   `;
 
@@ -2073,7 +2068,7 @@ function showHealthLogPanel() {
     const entries = loadHealthLog();
     const list = box.querySelector('#hlList');
     if (!entries.length) {
-      list.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:6px 0;">No telemetry logged.</div>';
+      list.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:6px 0;">No entries yet.</div>';
       return;
     }
     list.innerHTML = entries.slice(0, 20).map(e => {
@@ -2168,7 +2163,7 @@ function showEmergencyContactsModal() {
     box.innerHTML = `
       <div class="dialog-header">
         <div class="dialog-title-group">
-          <div class="dialog-badge" style="color:var(--coral);">CRITICAL SAFETY PROTOCOL</div>
+          <div class="dialog-badge" style="color:var(--coral);">SAFETY</div>
           <div class="dialog-title">Emergency Contacts & SOS Alerts</div>
         </div>
         <button type="button" class="dialog-close-btn" id="ecCloseBtn" aria-label="Close">✕</button>
@@ -2228,7 +2223,7 @@ function showEmergencyContactsModal() {
         <!-- Sample Emergency SMS Preview -->
         <div style="margin-top:4px;">
           <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">
-            AUTOMATED EMERGENCY MESSAGE PREVIEW
+            MESSAGE THAT WILL BE SENT
           </div>
           <div class="sos-message-preview-box">🚨 EMERGENCY SOS ALERT from Smart Companion 🚨
 Hi Mom, I need immediate emergency medical assistance!
@@ -2344,9 +2339,9 @@ function showEmergencyPanel() {
       <div class="dialog-title-group">
         <div class="dialog-badge" style="color:var(--coral); display:flex; align-items:center; gap:6px;">
           <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--coral); box-shadow:0 0 8px var(--coral); animation:pulse-dot 1.5s infinite;"></span>
-          CRITICAL PROTOCOL
+          EMERGENCY
         </div>
-        <div class="dialog-title" style="color:var(--coral);">Immediate Emergency Assistance</div>
+        <div class="dialog-title" style="color:var(--coral);">Emergency Help</div>
       </div>
       <button type="button" class="dialog-close-btn" id="sosCloseBtn" aria-label="Close">✕</button>
     </div>
@@ -2375,7 +2370,7 @@ function showEmergencyPanel() {
         <div class="sos-location-header">
           <div class="sos-location-title">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--coral);"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-            <span>Live Emergency Navigation</span>
+            <span>Directions to a hospital</span>
           </div>
           <span class="sos-google-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
@@ -2386,12 +2381,12 @@ function showEmergencyPanel() {
         <div id="sosLocationContent">
           <div id="sosLocationLoading" style="display:flex; align-items:center; gap:10px; padding:16px 12px; background:var(--bg-subtle); border-radius:var(--radius-sm); border:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12.5px;">
             <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid var(--coral); border-top-color:transparent; animation:spin 0.8s linear infinite; flex-shrink:0;"></span>
-            <span>Acquiring GPS location telemetry and calculating route to nearest hospital…</span>
+            <span>Finding your location and the nearest hospital…</span>
           </div>
         </div>
       </div>
 
-      <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%;">Dismiss Emergency Protocol</button>
+      <button id="sosCloseActionBtn" class="btn-subtle" style="width:100%;">Close</button>
     </div>
   `;
 
@@ -2415,9 +2410,9 @@ function showEmergencyPanel() {
         <div class="sos-contact-header">
           <div class="sos-contact-title">
             <span style="font-size:15px;">⚠️</span>
-            <span>Emergency Contact SOS Auto-Alert</span>
+            <span>Emergency Contact</span>
           </div>
-          <span class="sos-alert-badge pending">NO CONTACT SAVED</span>
+          <span class="sos-alert-badge pending">NO CONTACT YET</span>
         </div>
         <p style="font-size:12px; color:var(--text-secondary); margin:0;">
           Add a trusted contact number so an automated emergency message with your live GPS coordinates & map link is prepared and sent immediately:
@@ -2425,7 +2420,7 @@ function showEmergencyPanel() {
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
           <input id="sosQuickName" placeholder="Name (e.g. Mom)" style="flex:1; min-width:110px; padding:7px 9px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:12.5px;">
           <input id="sosQuickPhone" placeholder="Phone (+91...)" style="flex:1; min-width:140px; padding:7px 9px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); background:var(--bg-subtle); color:var(--text-primary); font-size:12.5px;">
-          <button type="button" id="sosQuickSaveBtn" class="btn-execute" style="padding:7px 12px; font-size:12px; white-space:nowrap; background:var(--coral);">Save & Dispatch Alert</button>
+          <button type="button" id="sosQuickSaveBtn" class="btn-execute" style="padding:7px 12px; font-size:12px; white-space:nowrap; background:var(--coral);">Save contact</button>
         </div>
       `;
 
@@ -2461,10 +2456,10 @@ function showEmergencyPanel() {
       <div class="sos-contact-header">
         <div class="sos-contact-title">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--coral);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
-          <span>Emergency Contact Automated Alert</span>
+          <span>Alert your emergency contact</span>
         </div>
         <span id="sosAlertStatusBadge" class="sos-alert-badge ${alertDispatched ? 'dispatched' : 'pending'}">
-          ${alertDispatched ? '✅ Alert Dispatched & Logged' : '⚡ Sending Auto-Alert…'}
+          ${alertDispatched ? '✅ Alert Dispatched & Logged' : '⚡ Preparing alert…'}
         </span>
       </div>
 
@@ -2531,7 +2526,7 @@ function showEmergencyPanel() {
         const badge = contactArea.querySelector('#sosAlertStatusBadge');
         if (badge) {
           badge.className = 'sos-alert-badge dispatched';
-          badge.textContent = '✅ Alert Ready (1-Tap Send)';
+          badge.textContent = '✅ Alert ready. Tap Send below';
         }
       });
     }
@@ -2594,7 +2589,7 @@ function showEmergencyPanel() {
               <div class="sos-point-label">Your Current Location (Origin)</div>
               <div class="sos-point-val" id="sosOriginDisplay">${originText}</div>
               <div class="sos-point-meta" style="display:flex; align-items:center; gap:8px;">
-                <span>Live Location Telemetry</span>
+                <span>Your live location</span>
                 <button type="button" id="sosRefreshLocBtn" class="btn-subtle" style="padding:2px 7px; font-size:10.5px; border-radius:3px; cursor:pointer;">🔄 Refresh GPS</button>
               </div>
             </div>
@@ -2750,7 +2745,7 @@ function showEmergencyPanel() {
     contentArea.innerHTML = `
       <div style="background:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px; font-size:12.5px; color:var(--text-secondary); display:flex; flex-direction:column; gap:10px;">
         <div style="font-weight:600; color:var(--coral); display:flex; align-items:center; gap:6px;">
-          <span>⚠️</span> GPS Location Access Unavailable
+          <span>⚠️</span> Can not find your location
         </div>
         <p style="margin:0; line-height:1.4;">
           ${escapeHtml(errorMsg || 'Unable to detect your exact GPS coordinates automatically.')} You can enter your current location to plot the Google Map directions, or open Google Maps directly:
@@ -2797,7 +2792,7 @@ function showEmergencyPanel() {
     contentArea.innerHTML = `
       <div id="sosLocationLoading" style="display:flex; align-items:center; gap:10px; padding:16px 12px; background:var(--bg-subtle); border-radius:var(--radius-sm); border:1px solid var(--border-subtle); color:var(--text-secondary); font-size:12.5px;">
         <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid var(--coral); border-top-color:transparent; animation:spin 0.8s linear infinite; flex-shrink:0;"></span>
-        <span>${forceFresh ? 'Fetching fresh GPS coordinates…' : 'Acquiring GPS location telemetry and calculating route to nearest hospital…'}</span>
+        <span>${forceFresh ? 'Updating your location…' : 'Finding your location and the nearest hospital…'}</span>
       </div>
     `;
 
@@ -2951,7 +2946,7 @@ function renderNearbyCard(doctors) {
   const div = document.createElement('div');
   div.className = 'msg assistant';
 
-  let html = '<div class="step-card-header"><span>HEALTHCARE DIRECTORY RESULTS</span></div>';
+  let html = '<div style="font-weight:600; margin-bottom:6px;">Nearby clinics and hospitals</div>';
   if (doctors.length) {
     html += '<div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">';
     doctors.forEach(d => {

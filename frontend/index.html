@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="patientui.css">
 </head>
 <body>
 
@@ -297,15 +298,15 @@
                   </div>
                   <button type="button" id="camChooseBtn" class="cam-menu-item" role="menuitem">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    <span>Upload Image Frame</span>
+                    <span>Upload a photo</span>
                   </button>
                   <button type="button" id="camTakeBtn" class="cam-menu-item" role="menuitem">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                    <span>Capture Snapshot</span>
+                    <span>Take a photo</span>
                   </button>
                   <button type="button" id="camGuideBtn" class="cam-menu-item" role="menuitem">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <span>Guided Vision Search</span>
+                    <span>Live camera help</span>
                   </button>
                   <button type="button" id="camDocBtn" class="cam-menu-item" role="menuitem">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
@@ -365,7 +366,7 @@
       <div class="dialog-header">
         <div class="dialog-title-group">
           <div class="dialog-badge">VISION & CAMERA</div>
-          <div class="dialog-title">Optical Guidance Workspace</div>
+          <div class="dialog-title">Live Camera Help</div>
         </div>
         <div class="dialog-header-actions">
           <div class="sensor-toggle-bar compact" id="liveOverlaySwitcher">
@@ -386,19 +387,19 @@
 
         <div class="guidance-sidebar">
           <div class="guidance-response-card" id="liveCamAnswer">
-            Point camera at objects or text to initiate cognitive vision guidance.
+            Point the camera at something and ask a question.
           </div>
 
           <div class="guidance-actions">
             <button type="button" class="btn-subtle" id="ambientToggleBtn">
-              <span>Ambient Scene Reasoning (6s)</span>
+              <span>Describe what the camera sees (every 6s)</span>
             </button>
           </div>
 
           <div class="guidance-input-row">
-            <input type="text" id="liveCamGoal" placeholder="Ask about this visual scene…" aria-label="Vision query">
+            <input type="text" id="liveCamGoal" placeholder="Ask about what the camera sees…" aria-label="Vision query">
             <button type="button" class="icon-action-btn" id="liveCamMicBtn" title="Speak question" aria-label="Voice question">🎙️</button>
-            <button type="button" class="btn-execute" id="liveCamSendBtn">Query</button>
+            <button type="button" class="btn-execute" id="liveCamSendBtn">Ask</button>
           </div>
         </div>
       </div>
@@ -425,7 +426,7 @@
             <button type="button" class="sensor-pill active" id="snapSrcWebcam" data-src="webcam">Webcam</button>
             <button type="button" class="sensor-pill" id="snapSrcIp" data-src="ipcamera">IP Camera</button>
           </div>
-          <button type="button" class="btn-execute" id="snapCaptureBtn">Capture & Stage Frame</button>
+          <button type="button" class="btn-execute" id="snapCaptureBtn">Take photo</button>
         </div>
       </div>
     </div>
@@ -436,26 +437,26 @@
     <div class="modal-dialog-window modal-compact">
       <div class="dialog-header">
         <div class="dialog-title-group">
-          <div class="dialog-badge">SYSTEM CONFIGURATION</div>
-          <div class="dialog-title">Settings & Network Sensors</div>
+          <div class="dialog-badge">SETTINGS</div>
+          <div class="dialog-title">Settings</div>
         </div>
         <button type="button" class="dialog-close-btn" id="ipSettingsCancelIcon" aria-label="Close">✕</button>
       </div>
       <div class="dialog-body">
         <div class="sensor-status-indicator">
           <span class="status-pip" id="ipModalDot"></span>
-          <span id="ipModalStatusText">Querying network link…</span>
+          <span id="ipModalStatusText">Checking connection…</span>
         </div>
         <div class="input-form-group">
-          <label for="backendApiHostInput" class="form-label">FastAPI Backend Endpoint</label>
+          <label for="backendApiHostInput" class="form-label">App server address</label>
           <input type="text" id="backendApiHostInput" class="form-text-input" placeholder="http://127.0.0.1:8000">
         </div>
         <div class="input-form-group">
-          <label for="ipCameraUrlInput" class="form-label">Stream RTSP / MJPEG URL</label>
+          <label for="ipCameraUrlInput" class="form-label">Camera stream address</label>
           <input type="text" id="ipCameraUrlInput" class="form-text-input" placeholder="http://192.168.1.X:8080/video">
         </div>
         <div class="dialog-actions-split">
-          <button type="button" class="btn-subtle" id="ipTestBtn">Test Stream Link</button>
+          <button type="button" class="btn-subtle" id="ipTestBtn">Test camera</button>
           <div class="actions-right">
             <button type="button" class="btn-subtle" id="ipSettingsCancelBtn">Cancel</button>
             <button type="button" class="btn-execute" id="ipSettingsSaveBtn">Save & Apply</button>
@@ -470,8 +471,8 @@
     <div class="modal-dialog-window modal-compact">
       <div class="dialog-header">
         <div class="dialog-title-group">
-          <div class="dialog-badge">PROGRESSION</div>
-          <div class="dialog-title">Growth Badges & Milestones</div>
+          <div class="dialog-badge">PROGRESS</div>
+          <div class="dialog-title">Badges & Progress</div>
         </div>
         <button type="button" class="dialog-close-btn" id="badgesCloseBtn" aria-label="Close">✕</button>
       </div>
@@ -485,6 +486,7 @@
 
   <!-- Core JavaScript -->
   <script src="app.js"></script>
+  <script src="icon.js"></script>
   <div style="position:fixed; bottom:2px; left:0; right:0; text-align:center; font-size:10px; color:var(--text-muted); opacity:0.5; pointer-events:none; z-index:1;">
   Doctor listings data © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:inherit; pointer-events:auto;">OpenStreetMap</a> contributors
 </div>

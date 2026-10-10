@@ -1,0 +1,315 @@
+/* ==========================================================================
+   SMART COMPANION - PATIENT-FRIENDLY LAYER
+   Load AFTER style.css:   <link rel="stylesheet" href="patient-ui.css">
+
+   Goals: larger, calmer, easier to read and tap.
+   - bigger text and more line spacing
+   - higher contrast for secondary text and borders
+   - every button / input at least 44px tall (comfortable for shaky hands)
+   - strong keyboard focus ring
+   - no pulsing or flashing animation on the SOS dialog
+   - text size control (Normal / Large / Extra large) in the sidebar
+   ========================================================================== */
+
+/* --- 1. Tokens: contrast and size --------------------------------------- */
+:root {
+  --pf-t: 1;                         /* text scale, changed by the Text size control */
+  --header-h: 60px;
+  --sidebar-w: 292px;
+  --content-max-w: 800px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --text-secondary: #d3dcea;
+  --text-muted: #a3b3c9;
+  --text-faint: #8393ab;
+  --border-subtle: rgba(255, 255, 255, 0.15);
+  --border-medium: rgba(255, 255, 255, 0.26);
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] {
+  --text-secondary: #334155;
+  --text-muted: #526074;
+  --text-faint: #64748b;
+  --border-subtle: #cbd5e1;
+  --border-medium: #94a3b8;
+  --shadow-card: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+
+[data-pf-text="small"]  { --pf-t: 0.8; }
+[data-pf-text="large"]  { --pf-t: 1.15; }
+[data-pf-text="xlarge"] { --pf-t: 1.3; }
+
+html, body {
+  font-size: calc(16px * var(--pf-t));
+  line-height: 1.6;
+}
+
+/* --- 2. Icons ------------------------------------------------------------- */
+.pf-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.24em;
+  flex-shrink: 0;
+  margin-right: 0.12em;
+}
+.pf-ic:last-child { margin-right: 0; }
+.pf-ic svg { width: 100%; height: 100%; display: block; }
+
+.step-checkbox .pf-ic,
+.dialog-close-btn .pf-ic,
+.staging-close-btn .pf-ic,
+.sidebar-close-btn .pf-ic,
+.sidebar-del-btn .pf-ic,
+.card-arrow .pf-ic { width: 20px; height: 20px; margin: 0; }
+.growth-stage-icon .pf-ic { width: 26px; height: 26px; color: var(--accent-mint); }
+.sos-siren-ring { color: #ffffff; }
+.sos-siren-ring .pf-ic { width: 32px; height: 32px; margin: 0; }
+.btn-emergency-sos .pf-ic { width: 1.15em; height: 1.15em; }
+.milestone-tile .pf-ic { width: 22px; height: 22px; }
+
+/* --- 3. Focus and motion ------------------------------------------------ */
+:focus-visible {
+  outline: 3px solid var(--accent-cyan) !important;
+  outline-offset: 3px !important;
+}
+
+.sos-siren-ring { animation: none !important; box-shadow: 0 0 0 6px rgba(244, 63, 94, 0.25); }
+.emergency-dialog [style*="pulse-dot"] { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- 4. Sidebar --------------------------------------------------------- */
+.brand-name { font-size: calc(17px * var(--pf-t)); }
+.group-label { font-size: calc(12.5px * var(--pf-t)); letter-spacing: 0.05em; }
+.group-count { font-size: calc(12.5px * var(--pf-t)); }
+
+.btn-new-conversation {
+  min-height: 52px;
+  font-size: calc(16px * var(--pf-t));
+  font-weight: 600;
+  border-radius: var(--radius-md);
+}
+.sidebar-item,
+.tool-link-item {
+  min-height: 48px;
+  height: auto;
+  font-size: calc(15.5px * var(--pf-t));
+  border-radius: var(--radius-md);
+}
+.tool-link-item svg { width: 20px; height: 20px; }
+.sidebar-item.active { border-left-width: 3px; }
+.sidebar-del-btn { min-width: 40px; min-height: 40px; }
+@media (hover: none) { .sidebar-del-btn { opacity: 1; } }
+
+.growth-tile { padding: 12px 14px; }
+.growth-title { font-size: calc(14px * var(--pf-t)); }
+.growth-count, .growth-streak { font-size: calc(12.5px * var(--pf-t)); }
+.theme-pill-btn { min-height: 40px; font-size: calc(13px * var(--pf-t)); }
+.btn-clear-history { min-height: 40px; font-size: calc(13.5px * var(--pf-t)); }
+
+/* Text size control (added by icons.js) */
+.pf-textsize { display: flex; flex-direction: column; gap: 6px; }
+.pf-textsize-label {
+  font-size: calc(12.5px * var(--pf-t));
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pf-textsize-btns { display: flex; gap: 6px; }
+.pf-textsize-btns button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pf-textsize-btns button[aria-pressed="true"] {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+  color: #ffffff;
+}
+.pf-ts-0 { font-size: 12px; }
+.pf-ts-1 { font-size: 15px; }
+.pf-ts-2 { font-size: 19px; }
+.pf-ts-3 { font-size: 24px; }
+
+/* --- 5. Top bar ------------------------------------------------------------ */
+.topbar-breadcrumb { font-size: calc(15px * var(--pf-t)); }
+.sensor-pill { min-height: 36px; font-size: calc(13.5px * var(--pf-t)); padding: 4px 12px; }
+.topbar-icon-btn { width: 44px; height: 44px; }
+.sidebar-trigger { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+
+.btn-emergency-sos {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  background-color: var(--accent-rose);
+  color: #ffffff;
+  border: 2px solid var(--accent-rose);
+  border-radius: var(--radius-md);
+  font-size: calc(15px * var(--pf-t));
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 2px 10px rgba(244, 63, 94, 0.35);
+}
+.btn-emergency-sos:hover { background-color: #be123c; border-color: #be123c; color: #ffffff; }
+
+/* --- 6. Welcome screen --------------------------------------------------- */
+.hero-brand-label { font-size: calc(13px * var(--pf-t)); }
+.hero-title { font-size: calc(36px * var(--pf-t)); line-height: 1.2; }
+.hero-subtitle { font-size: calc(18px * var(--pf-t)); max-width: 640px; line-height: 1.6; }
+.suggested-actions-grid { gap: 14px; }
+.action-card { min-height: 68px; padding: 16px 20px; border-radius: var(--radius-lg); }
+.card-text { font-size: calc(17px * var(--pf-t)); }
+
+/* --- 7. Conversation ------------------------------------------------------ */
+.msg { margin-bottom: 28px; }
+.msg.user .msg-body-text { font-size: calc(16.5px * var(--pf-t)); padding: 14px 18px; line-height: 1.55; }
+.msg-meta-header { font-size: calc(12.5px * var(--pf-t)); }
+.synthesis-header-tag { font-size: calc(13px * var(--pf-t)); }
+
+.progression-labels { font-size: calc(14px * var(--pf-t)); }
+.progression-track { height: 8px; border-radius: 4px; }
+.progression-fill { border-radius: 4px; }
+
+.step-card-list { gap: 12px; }
+.step-item { padding: 18px 20px; gap: 16px; border-radius: var(--radius-lg); }
+.step-item.active-focus { border-width: 2px; }
+.step-item.completed { opacity: 0.75; }
+.step-checkbox { width: 40px; height: 40px; font-size: calc(14px * var(--pf-t)); border-radius: var(--radius-sm); }
+.step-state-tag { font-size: calc(12.5px * var(--pf-t)); }
+.step-title { font-size: calc(17.5px * var(--pf-t)); line-height: 1.5; }
+.step-duration-chip { font-size: calc(14px * var(--pf-t)); }
+.step-timer-btn { min-height: 38px; padding: 4px 12px; font-size: calc(14px * var(--pf-t)); border-radius: var(--radius-sm); }
+
+.done-btn {
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: calc(16px * var(--pf-t));
+  border-radius: var(--radius-md);
+}
+.done-note { font-size: calc(15.5px * var(--pf-t)); }
+.speak-bubble-btn { min-height: 40px; font-size: calc(14.5px * var(--pf-t)); padding: 6px 4px; }
+.answer-headline { font-size: calc(18px * var(--pf-t)); }
+.answer-detail { font-size: calc(16.5px * var(--pf-t)); line-height: 1.6; }
+
+/* --- 8. Composer ---------------------------------------------------------- */
+.composer-container { max-width: 800px; }
+.status-text { font-size: calc(14px * var(--pf-t)); }
+.composer-box { border-radius: 20px; padding: 14px 16px 12px 18px; }
+.composer-box textarea { font-size: calc(17px * var(--pf-t)); min-height: 28px; }
+.tool-btn { width: 44px; height: 44px; }
+.tool-btn svg { width: 20px; height: 20px; }
+.btn-send-message { width: 46px; height: 46px; border-radius: var(--radius-md); }
+.btn-send-message svg { width: 18px; height: 18px; }
+.cam-menu { width: 260px; }
+.cam-menu-item { min-height: 46px; font-size: calc(15px * var(--pf-t)); }
+.menu-heading { font-size: calc(13px * var(--pf-t)); }
+.staging-name { font-size: calc(14px * var(--pf-t)); }
+.transcription-text { font-size: calc(14.5px * var(--pf-t)); }
+
+/* --- 9. Dialogs and forms ------------------------------------------------- */
+.dialog-title { font-size: calc(17.5px * var(--pf-t)); }
+.dialog-badge { font-size: calc(11.5px * var(--pf-t)); }
+.dialog-close-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+.btn-execute, .btn-secondary, .btn-subtle {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: calc(14.5px * var(--pf-t));
+  border-radius: var(--radius-sm);
+}
+.form-label, .field-label { font-size: calc(14px * var(--pf-t)); }
+
+.form-text-input,
+.guidance-input-row input,
+.settings-box input,
+.modal-dialog-window input,
+.sos-dialog-body input {
+  min-height: 46px;
+  font-size: calc(15.5px * var(--pf-t)) !important;
+}
+.guidance-response-card, .live-answer { font-size: calc(15.5px * var(--pf-t)); line-height: 1.55; }
+.milestone-name { font-size: calc(15px * var(--pf-t)); }
+.milestone-desc { font-size: calc(12.5px * var(--pf-t)); }
+.sensor-status-indicator, .ip-status-banner { font-size: calc(13.5px * var(--pf-t)); }
+
+/* Dialogs build a lot of small inline text. Lift every inline size under 14px. */
+.settings-box [style*="font-size:10"],
+.settings-box [style*="font-size:11"],
+.settings-box [style*="font-size:12"],
+.settings-box [style*="font-size:13"],
+.modal-dialog-window [style*="font-size:10"],
+.modal-dialog-window [style*="font-size:11"],
+.modal-dialog-window [style*="font-size:12"],
+.modal-dialog-window [style*="font-size:13"],
+.msg [style*="font-size:11"],
+.msg [style*="font-size:12"],
+.msg [style*="font-size:13"] {
+  font-size: calc(14px * var(--pf-t)) !important;
+  line-height: 1.5;
+}
+.settings-box button,
+.sos-dialog-body button { min-height: 44px; }
+.settings-box .fam-remove-btn,
+.settings-box .med-remove-btn,
+.settings-box .ec-delete-btn { min-width: 44px; }
+
+/* --- 10. Emergency (SOS) dialog ------------------------------------------ */
+.emergency-dialog { max-width: 700px; }
+.sos-dialog-body { gap: 16px; padding: 18px 20px 22px; }
+.sos-dialog-body a[href^="tel:"] { min-height: 56px; font-size: calc(16.5px * var(--pf-t)) !important; }
+
+.sos-card-container,
+.sos-contact-section { padding: 16px; border-radius: var(--radius-lg); }
+.sos-location-title, .sos-contact-title { font-size: calc(15.5px * var(--pf-t)); }
+.sos-google-badge { font-size: calc(12.5px * var(--pf-t)); }
+.sos-alert-badge { font-size: calc(12px * var(--pf-t)); padding: 4px 10px; }
+.sos-route-summary { font-size: calc(14.5px * var(--pf-t)); padding: 14px; }
+.sos-point-label { font-size: calc(12px * var(--pf-t)); }
+.sos-point-val { font-size: calc(15.5px * var(--pf-t)); white-space: normal; }
+.sos-point-meta { font-size: calc(13.5px * var(--pf-t)); }
+.sos-contact-details { font-size: calc(14.5px * var(--pf-t)); padding: 12px 14px; }
+.sos-contact-phone-tag { font-size: calc(14px * var(--pf-t)); }
+
+.sos-mode-btn { min-height: 46px; font-size: calc(14px * var(--pf-t)); }
+.sos-map-viewport { height: 270px; }
+.btn-sos-navigate,
+.btn-sos-call { min-height: 54px; font-size: calc(15.5px * var(--pf-t)); border-radius: var(--radius-md); }
+.btn-sos-sms,
+.btn-sos-wa,
+.btn-sos-contact-call { min-height: 48px; font-size: calc(14.5px * var(--pf-t)); border-radius: var(--radius-md); }
+.sos-facility-chip { min-height: 42px; font-size: calc(13.5px * var(--pf-t)); padding: 8px 14px; }
+.sos-facilities-label { font-size: calc(12.5px * var(--pf-t)); }
+.sos-custom-search-toggle { min-height: 44px; font-size: calc(14px * var(--pf-t)); }
+.sos-message-preview-box { font-size: calc(12.5px * var(--pf-t)); max-height: 130px; line-height: 1.5; }
+.contacts-manager-card { padding: 14px 16px; }
+
+/* --- 11. Small screens ---------------------------------------------------- */
+@media (max-width: 640px) {
+  .hero-title { font-size: calc(28px * var(--pf-t)); }
+  .hero-subtitle { font-size: calc(16.5px * var(--pf-t)); }
+  .btn-emergency-sos span { display: inline; }
+  .workspace-topbar { gap: 8px; }
+  .sensor-toggle-bar { display: none; }
+  .sos-actions-row, .sos-contact-actions { flex-direction: column; }
+  .btn-sos-navigate { min-width: 0; width: 100%; }
+}
