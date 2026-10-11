@@ -38,6 +38,7 @@ from app.router import classify_intent, build_agent_system_note
 from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
 from app.triage import check_emergency
+from app.resources import get_resources
 
 app = FastAPI(title="Smart Companion API")
 
@@ -214,3 +215,7 @@ def classify_session(input: TextInput):
 def nearby_healthcare(req: NearbyRequest):
     results = find_nearby_healthcare(req.lat, req.lng)
     return {"results": results, "helplines": INDIA_HEALTH_HELPLINES}
+
+@app.post("/resources")
+def resources(input: TextInput):
+    return get_resources(redact_text(input.text))

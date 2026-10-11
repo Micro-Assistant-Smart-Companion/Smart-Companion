@@ -2233,4 +2233,17 @@ a {
   justify-content: space-between;
   gap: 8px;
 }
-
+/* Append to style.css */
+.explore-card {
+  margin-top: 14px; padding: 12px;
+  border: 1px solid var(--border-subtle, rgba(128,128,128,.25));
+  border-radius: 12px; background: var(--bg-subtle, rgba(128,128,128,.06));
+}
+.explore-head { font-size: 11px; font-weight: 600; letter-spacing: .08em; opacity: .65; margin-bottom: 10px; }
+.explore-images { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 4px; }
+.explore-images a { flex: 0 0 auto; }
+.explore-images img { height: 110px; width: auto; max-width: 200px; object-fit: cover; border-radius: 8px; display: block; background: #fff; }
+.explore-link { display: block; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: inherit; }
+.explore-link:hover { background: rgba(124, 92, 255, .12); }
+.explore-link-title { font-size: 14px; font-weight: 600; color: #7c5cff; }
+.explore-link-snippet { font-size: 12px; opacity: .7; margin-top: 2px; }
