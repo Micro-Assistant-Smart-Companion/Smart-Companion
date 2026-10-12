@@ -212,9 +212,18 @@ Third-party components and data keep their own licenses:
 \* PyMuPDF is AGPL-3.0 and YOLOv8 (Ultralytics) is AGPL-3.0. They are used as libraries for this open-source prototype.
 
 ## 14. Presentation and Architecture Diagram
-
-- Architecture diagram (PDF/PPT): [`docs/architecture.pdf`](docs/architecture.pdf)
-- Presentation covering project details and outcomes (PDF/PPT): [`[docs/Smart_Companion_Presentation.pdf](https://drive.google.com/file/d/1LYUC2jc42Ey0EUwjk-3pAEbNMddTUrnZ/view?usp=sharing)`]
+ 
+![Architecture diagram](docs/architecture.png)
+ 
+All files below are hosted on Google Drive with access set to **"Anyone with the link: Viewer"**, so they open with a single click and need no login or permission request.
+ 
+| Item | Format | Link |
+|---|---|---|
+| Architecture diagram | PDF | [Open architecture diagram](DRIVE_LINK_ARCHITECTURE) |
+| Presentation (project details and outcomes) | PDF / PPT | [Open presentation](DRIVE_LINK_PRESENTATION) |
+| Full project report | DOCX / PDF | [Open project report](DRIVE_LINK_REPORT) |
+ 
+Backup copies of the architecture diagram are also in this repository: [`docs/architecture.pdf`](docs/architecture.pdf) and [`docs/architecture.png`](docs/architecture.png).
 
 
 ## 15. Impact and Outcomes
