@@ -129,8 +129,6 @@ flowchart LR
     API -->|JSON steps| U
 ```
 
-The architecture diagram is also provided as a PDF in [`docs/`](d[ocs/](https://drive.google.com/file/d/1xiUcNMEqtVT41IFWxy2wj0AoFzB8CmhN/view?usp=sharing)).
-
 ### Endpoints (26)
 
 | Area | Endpoints |
