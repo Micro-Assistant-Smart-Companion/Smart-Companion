@@ -220,7 +220,7 @@ All files below are hosted on Google Drive with access set to **"Anyone with the
 | Item | Format | Link |
 |---|---|---|
 | Architecture diagram | PDF | [Open architecture diagram](DRIVE_LINK_ARCHITECTURE) |
-| Presentation (project details and outcomes) | PDF / PPT | [Open presentation](DRIVE_LINK_PRESENTATION) |
+| Presentation (project details and outcomes) | PDF / PPT | [Open presentation](https://drive.google.com/file/d/1LYUC2jc42Ey0EUwjk-3pAEbNMddTUrnZ/view?usp=sharing) |
 | Full project report | DOCX / PDF | [Open project report](DRIVE_LINK_REPORT) |
  
 Backup copies of the architecture diagram are also in this repository: [`docs/architecture.pdf`](docs/architecture.pdf) and [`docs/architecture.png`](docs/architecture.png).
