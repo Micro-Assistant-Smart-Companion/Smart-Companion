@@ -214,8 +214,8 @@ Third-party components and data keep their own licenses:
 ## 14. Presentation and Architecture Diagram
 
 - Architecture diagram (PDF/PPT): [`docs/architecture.pdf`](docs/architecture.pdf)
-- Presentation covering project details and outcomes (PDF/PPT): [`docs/Smart_Companion_Presentation.pdf`](docs/Smart_Companion_Presentation.pdf)
-- Full project report: [`docs/Smart_Companion_Project_Report.docx`](docs/Smart_Companion_Project_Report.docx)
+- Presentation covering project details and outcomes (PDF/PPT): [`[docs/Smart_Companion_Presentation.pdf](https://drive.google.com/file/d/1LYUC2jc42Ey0EUwjk-3pAEbNMddTUrnZ/view?usp=sharing)`](docs/Smart_Companion_Presentation.pdf)
+
 
 ## 15. Impact and Outcomes
 
