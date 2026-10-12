@@ -2247,3 +2247,21 @@ a {
 .explore-link:hover { background: rgba(124, 92, 255, .12); }
 .explore-link-title { font-size: 14px; font-weight: 600; color: #7c5cff; }
 .explore-link-snippet { font-size: 12px; opacity: .7; margin-top: 2px; }
+.brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--border-subtle);
+}
+
+.hero-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 12px;
+  box-shadow: 0 6px 24px rgba(124, 92, 255, 0.25);
+}
