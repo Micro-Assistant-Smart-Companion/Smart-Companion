@@ -188,7 +188,7 @@ On first use of the doctor directory, the app seeds nearby facilities from OpenS
 
 ## 12. Demo Video
 
-**Unlisted YouTube link (15-20 min demo):** _[ADD LINK HERE]_
+**Unlisted YouTube link (15-20 min demo):** _[(https://youtu.be/E_0aLTRpUOE)]_
 
 The video covers the problem, a full live demo (task breakdown, voice, live camera, PDF Q&A, SOS, doctor directory, Health Log), the architecture and the AI pipeline, and the roadmap.
 
