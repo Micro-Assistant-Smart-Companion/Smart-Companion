@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Team Details
+## 1. Team Synora Details
 
 | Name | Role | Email |
 |------|------|-------|
@@ -220,7 +220,7 @@ All files below are hosted on Google Drive with access set to **"Anyone with the
 | Architecture diagram | PDF | [Open architecture diagram](https://drive.google.com/file/d/1xiUcNMEqtVT41IFWxy2wj0AoFzB8CmhN/view?usp=sharing) |
 | Presentation (project details and outcomes) | PDF / PPT | [Open presentation](https://drive.google.com/file/d/1LYUC2jc42Ey0EUwjk-3pAEbNMddTUrnZ/view?usp=sharing) |
  
-Backup copies of the architecture diagram are also in this repository: [`docs/architecture.pdf`](docs/architecture.pdf) and [`docs/architecture.png`](docs/architecture.png).
+Backup copies of the architecture diagram are also in this repository
 
 
 ## 15. Impact and Outcomes
@@ -252,4 +252,4 @@ Google, Youtube, Groq, OpenStreetMap contributors, Wikimedia Foundation, and the
 
 ---
 
-*Built by Team _Name_ for the Digital Twin Challenge 2026.*
+*Built by Synora for the Digital Twin Challenge 2026.*
