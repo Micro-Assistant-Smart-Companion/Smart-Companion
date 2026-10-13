@@ -10,8 +10,8 @@
 
 | Name | Role | Email |
 |------|------|-------|
-| _Anwesha Mondol_ (Team Lead) | Frontent UI UX | _email_ |
-| _Sandipan Dafadar_ | Speech-to-text, backend integration, AIML pipeline | _email_ |
+| _Anwesha Mondal_ (Team Lead) | Frontent UI UX | _anweshamondal052004@gmail.com_ |
+| _Sandipan Dafadar_ | Speech-to-text, backend integration, AIML pipeline | _sandipandafadar04@gmail.com_ |
 | _Meghali Khan_ |Backend integration, vision, AI/LLM pipeline | _meghalikhan001@gmail.com_ |
 
 ## 2. College / Incubator Information
