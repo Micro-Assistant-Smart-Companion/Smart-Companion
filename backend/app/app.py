@@ -32,12 +32,13 @@ from visual.vision import detect_objects_summary
 from visual.caption import answer_about_image
 from visual.guide import get_guidance
 from visual.ip_camera import IPCameraStream
-from speech_to_text.speech import transcribe_audio_bytes
+from speech_to_text.speech import transcribe_detect
 from visual.pdfqa import extract_pages, store_document, answer_question_about_document, prefetch_pending_pages
 from app.router import classify_intent, build_agent_system_note
 from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
-from app.triage import check_emergency
+from app.triage import check_emergency, EMERGENCY_TEXT
+from app.prescription import extract_prescription
 from app.resources import get_resources
 
 app = FastAPI(title="Smart Companion API")
@@ -67,15 +68,22 @@ def redact_pii(input: TextInput):
 
 @app.post("/decompose-task", response_model=TaskResponse)
 def decompose(req: TaskRequest):
+    lang = req.language if req.language in ("en", "hi", "bn") else "en"
     safe_goal = redact_text(req.goal)
 
+    # Emergency check looks ONLY at what the user just said, never at the Health Log text.
     if check_emergency(req.goal):
         return {
-            "steps": [{"step": 1, "text": "This sounds like it could be a medical emergency. Please call 108 (ambulance) or 104 (health helpline) right now, or go to the nearest hospital immediately."}],
+            "steps": [{"step": 1, "text": EMERGENCY_TEXT[lang]}],
             "is_final": True,
             "is_question": False,
             "is_emergency": True,
         }
+
+    note = req.session_note
+    if req.health_context.strip():
+        note += (" The user's own notes follow, for background only. Never diagnose from them or "
+                 "explain any medicine in them: " + redact_text(req.health_context)[:600])
 
     result = decompose_task(
         goal=safe_goal,
@@ -84,14 +92,41 @@ def decompose(req: TaskRequest):
         tone=req.tone,
         completed_steps=req.completed_steps,
         history=[t.model_dump() for t in req.history],
-        session_note=req.session_note,
+        session_note=note,
+        language=lang,
     )
-    return result  
+    return result
+
+
 @app.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe(file: UploadFile = File(...)):
+async def transcribe(file: UploadFile = File(...), language: str = Form(default="en")):
     audio_bytes = await file.read()
-    text = transcribe_audio_bytes(audio_bytes, filename=file.filename, content_type=file.content_type)
-    return {"text": text}
+    # `language` is only a hint: Whisper detects what was really spoken and we return it
+    return transcribe_detect(audio_bytes, filename=file.filename,
+                             content_type=file.content_type, hint=language)
+
+
+class TTSInput(BaseModel):
+    text: str
+    lang: str = "en"
+
+
+@app.post("/tts")
+def tts(input: TTSInput):
+    # fallback voice for devices with no Hindi/Bengali voice installed
+    from app.tts import speak_mp3
+    try:
+        return Response(content=speak_mp3(input.text, input.lang), media_type="audio/mpeg")
+    except Exception as e:
+        print(f"[tts] failed: {e}")
+        return Response(status_code=503, content="Voice not available")
+
+
+@app.post("/extract-prescription")
+async def extract_prescription_endpoint(file: UploadFile = File(...)):
+    data = await file.read()
+    return extract_prescription(data)
+
 
 @app.post("/detect-objects", response_model=DetectObjectsResponse)
 async def detect_objects(file: UploadFile = File(...)):

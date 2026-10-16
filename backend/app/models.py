@@ -22,6 +22,8 @@ class TaskRequest(BaseModel):
     completed_steps: list = []
     history: list[ChatTurn] = []
     session_note: str = ""
+    language: str = "en"          # "en" | "hi" | "bn"
+    health_context: str = ""      # the user's own Health Log summary (medical chats only)
 
 
 class TaskResponse(BaseModel):
@@ -33,6 +35,7 @@ class TaskResponse(BaseModel):
 
 class TranscribeResponse(BaseModel):
     text: str
+    language: str = ""   # what was actually spoken: en | hi | bn
 
 
 class DetectObjectsResponse(BaseModel):

@@ -35,11 +35,26 @@ def extract_json(raw_text: str):
     return None
 
 
+LANG_NAMES = {"hi": "Hindi (in Devanagari script)", "bn": "Bengali (in Bengali script)"}
+
+
+def _language_block(language: str) -> str:
+    name = LANG_NAMES.get(language)
+    if not name:
+        return ""   # English: prompt stays exactly as before
+    return (f'LANGUAGE: Write every "text" value in simple, everyday {name}, the way a friendly person '
+            f'would speak. Keep the JSON keys and true/false in English letters. Write the unit in "time" '
+            f'in the same language too. Do not add English sentences; common English words people really '
+            f'use (like BP or Wi-Fi) are fine.\n\n')
+
+
 def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
-                  completed_steps: list, history: list = None, session_note: str = "") -> str:
+                  completed_steps: list, history: list = None, session_note: str = "",
+                  language: str = "en") -> str:
     history = history or []
 
     note_block = f"IMPORTANT - follow this constraint strictly: {session_note}\n\n" if session_note else ""
+    note_block += _language_block(language)
 
     history_block = ""
     if history:
@@ -110,7 +125,7 @@ and set "is_final" to false."""
     choices_shape = '{{"step": 1, "text": "Which one first?", "clarify": true, "choices": ["Option A", "Option B"]}}'
     open_shape = '{{"step": 1, "text": "Which subjects do you have for this exam?", "clarify": true}}'
 
-    return f"""{history_block}You are a warm, friendly companion for all kinds of users, especially neurodivergent users.
+    return f"""{note_block}{history_block}You are a warm, friendly companion for all kinds of users, especially neurodivergent users.
 Talk like a supportive friend, not a manual - encouraging, patient, never robotic or curt.
 The input below may be either an ACTION goal (something to do and something to solve),
 a QUESTION (something to know), or a FOLLOW-UP about something already discussed above.
@@ -161,9 +176,9 @@ def _call_model(prompt: str):
 
 def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
                     tone: str = "encouraging", completed_steps: list = None,
-                    history: list = None, session_note: str = "") -> dict:
+                    history: list = None, session_note: str = "", language: str = "en") -> dict:
     completed_steps = completed_steps or []
-    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history, session_note)
+    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history, session_note, language)
 
     raw_text, elapsed = _call_model(prompt)
     parsed = extract_json(raw_text)
@@ -171,7 +186,8 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
 
     if parsed is None or "steps" not in parsed:
         print("[warning] Model did not return steps - retrying without conversation history")
-        clean_prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history=None)
+        clean_prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history=None,
+                                    session_note=session_note, language=language)
         raw_text, elapsed = _call_model(clean_prompt)
         parsed = extract_json(raw_text)
         print(f"[timing] Retry took {elapsed:.2f}s")

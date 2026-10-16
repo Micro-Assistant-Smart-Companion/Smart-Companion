@@ -21,6 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="patientui.css">
 </head>
 <body>
 
@@ -470,6 +471,31 @@
 
   <!-- Core JavaScript -->
   <script src="app.js"></script>
+  <script src="icon.js"></script>
+
+  <!-- Text size controls (self-contained, remembers your choice) -->
+  <script>
+    (function () {
+      var KEY = 'companion_text_scale';
+      var scale = parseFloat(localStorage.getItem(KEY)) || 1;
+      function apply() {
+        scale = Math.min(1.6, Math.max(0.85, Math.round(scale * 100) / 100));
+        var feed = document.getElementById('feed');
+        if (feed) feed.style.zoom = scale;
+        var label = document.getElementById('textSizeLabel');
+        if (label) label.textContent = Math.round(scale * 100) + '%';
+        try { localStorage.setItem(KEY, String(scale)); } catch (e) {}
+      }
+      var up = document.getElementById('textLargerBtn');
+      var down = document.getElementById('textSmallerBtn');
+      var reset = document.getElementById('textResetBtn');
+      if (up) up.addEventListener('click', function () { scale += 0.1; apply(); });
+      if (down) down.addEventListener('click', function () { scale -= 0.1; apply(); });
+      if (reset) reset.addEventListener('click', function () { scale = 1; apply(); });
+      apply();
+    })();
+  </script>
+
 <div style="position:fixed; bottom:2px; left:0; right:0; text-align:center; font-size:10px; color:var(--text-muted); opacity:0.5; pointer-events:none; z-index:1;">
   Doctor listings data © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:inherit; pointer-events:auto;">OpenStreetMap</a> contributors
 </div>
