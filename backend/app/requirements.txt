@@ -16,3 +16,8 @@ requests
 scikit-learn
 sentence-transformers
 opencv-python
+ddgs
+click>=8.4.2,<9
+
+# gTTS ta alada kore install koris backend folder ei noile janina keno spacy r version er sathe conflict hocche.
+#   pip install gTTS --no-deps
