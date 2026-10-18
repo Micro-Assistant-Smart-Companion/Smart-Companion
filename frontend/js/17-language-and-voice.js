@@ -1,3 +1,5 @@
+// [17/19] English / Hindi / Bengali picker and read-aloud voice
+// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
 // ---- MULTILINGUAL VOICE: English / Hindi / Bengali ----
 // Paste at the very bottom of app.js. Needs the 4 one-line edits in INTEGRATION.md.
 // Replies, speech-to-text AND read-aloud all follow the language picked in the little dropdown by the mic.
@@ -14,6 +16,12 @@ function currentLangCode() {
   try { c = localStorage.getItem(LANG_KEY) || 'en'; } catch (e) {}
   return LANGS[c] ? c : 'en';
 }
+// used when the server tells us which language was really spoken
+function setLangCode(code) {
+  if (!LANGS[code]) return;
+  try { localStorage.setItem(LANG_KEY, code); } catch (e) {}
+  const sel = document.getElementById('langPicker'); if (sel) sel.value = code;
+}
 function currentLang() { const code = currentLangCode(); return { code, ...LANGS[code] }; }
 
 // The language picker (injected, so index.html needs no change)
@@ -22,7 +30,10 @@ function currentLang() { const code = currentLangCode(); return { code, ...LANGS
   const st = document.createElement('style');
   st.textContent = `.lang-picker{background:var(--bg-subtle,rgba(128,128,128,.12));color:var(--text-primary,inherit);
     border:1px solid var(--border-subtle,rgba(128,128,128,.3));border-radius:8px;padding:4px 6px;font-size:12px;
-    cursor:pointer;margin-right:4px;max-width:92px}`;
+    cursor:pointer;margin-right:4px;max-width:92px;color-scheme:dark}
+    [data-theme="light"] .lang-picker{color-scheme:light}
+    .lang-picker option{background:#181d2e;color:#f8fafc}
+    [data-theme="light"] .lang-picker option{background:#ffffff;color:#0f172a}`;
   document.head.appendChild(st);
   const sel = document.createElement('select');
   sel.id = 'langPicker'; sel.className = 'lang-picker';

@@ -1,3 +1,5 @@
+// [18/19] NEW health log: tabs, prescription upload, doctor PDF
+// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
 // ---- HEALTH LOG v2: easier to use, reads prescriptions, makes a PDF for the doctor ----
 // Paste at the very bottom of app.js. It takes over the "Health Log" button (the old panel is simply not opened any more).
 // Everything is saved in this browser only. Old entries are kept: same keys, same format.
@@ -76,7 +78,7 @@ function hlDescribe(e) {
   .hl2-box{max-width:560px;width:100%}
   .hl2-body{max-height:62vh;overflow-y:auto;padding:2px 2px 6px}
   .hl2-tabs{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
-  .hl2-tab{flex:1;min-width:92px;padding:10px 8px;border-radius:10px;border:1px solid var(--border-subtle);background:transparent;
+  .hl2-tab{flex:1;min-width:84px;padding:10px 8px;border-radius:10px;border:1px solid var(--border-subtle);background:transparent;
     color:var(--text-secondary);font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit}
   .hl2-tab.on{background:var(--accent-purple-subtle,rgba(124,92,255,.14));color:var(--accent-purple,#7c5cff);border-color:var(--accent-purple,#7c5cff)}
   .hl2-upload{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;cursor:pointer;
@@ -115,7 +117,7 @@ function hlDescribe(e) {
 })();
 
 // ---------- the panel ----------
-function hlOpenPanel() {
+function hlOpenPanel(startTab) {
   if (typeof toggleSidebar === 'function') toggleSidebar(false);
   const overlay = document.createElement('div');
   overlay.className = 'settings-modal active';
@@ -124,8 +126,8 @@ function hlOpenPanel() {
   box.className = 'settings-box hl2-box';
   overlay.appendChild(box); document.body.appendChild(overlay);
 
-  let tab = 'today';
-  const TABS = [['today', '📝 Today'], ['conds', '🩺 Conditions'], ['meds', '💊 Medicines'], ['report', '📄 Doctor report']];
+  let tab = typeof startTab === 'string' ? startTab : 'today';
+  const TABS = [['today', '📝 Today'], ['conds', '🩺 Conditions'], ['meds', '💊 Medicines'], ['report', '📄 Doctor report'], ['card', '🆘 Emergency card'], ['backup', '💾 Backup']];
   const close = () => overlay.remove();
   overlay.onclick = e => { if (e.target === overlay) close(); };
 
@@ -154,7 +156,7 @@ function hlOpenPanel() {
       const f = ev.target.files[0]; if (f) hlUploadPrescription(f, box, shell);
     };
     const body = box.querySelector('#hlBody');
-    ({ today: hlTabToday, conds: hlTabConds, meds: hlTabMeds, report: hlTabReport })[tab](body, () => { const y = body.scrollTop; shell(); box.querySelector('#hlBody').scrollTop = y; });
+    ({ today: hlTabToday, conds: hlTabConds, meds: hlTabMeds, report: hlTabReport, card: hlTabCard, backup: hlTabBackup })[tab](body, () => { const y = body.scrollTop; shell(); box.querySelector('#hlBody').scrollTop = y; });
   }
   shell();
 }
@@ -165,12 +167,13 @@ function hlOpenPanel() {
   if (!old) return;
   const fresh = old.cloneNode(true);
   old.replaceWith(fresh);
-  fresh.addEventListener('click', hlOpenPanel);
+  fresh.addEventListener('click', () => hlOpenPanel());
 })();
 
 // ---------- tab: today ----------
 function hlTabToday(body, refresh) {
   body.innerHTML = `
+    ${typeof bkNudgeHtml === 'function' ? bkNudgeHtml() : ''}
     <div class="hl2-err" id="hlErr"></div>
     <div class="hl2-card"><div class="hl2-card-title">🩺 Blood pressure</div>
       <div class="hl2-row">
@@ -193,6 +196,8 @@ function hlTabToday(body, refresh) {
         <button class="hl2-btn" id="otSave" type="button">Save</button></div></details>
     <div class="hl2-sub">RECENT ENTRIES</div><div id="hlRecent"></div>`;
 
+  const nudge = body.querySelector('#bkNudgeGo');
+  if (nudge) nudge.onclick = () => { const t = document.querySelector('.hl2-tab[data-tab="backup"]'); if (t) t.click(); };
   const err = m => { body.querySelector('#hlErr').textContent = m || ''; };
   const num = id => parseFloat(body.querySelector(id).value);
   const done = () => { hlToast('Saved ✓'); refresh(); };
