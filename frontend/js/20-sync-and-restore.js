@@ -1,11 +1,6 @@
-// [20/20] encrypted sync and the welcome restore screen
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
+// encrypted sync and the welcome restore screen
+//  ENCRYPTED SYNC + WELCOME RESTORE. The browser encrypts everything with a key made from the user's Sync key. The server only stores scrambled text it cannot open.
 
-// =====================================================================
-//  ENCRYPTED SYNC + WELCOME RESTORE
-//  The browser encrypts everything with a key made from the user's Sync key.
-//  The server only stores scrambled text it cannot open.
-// =====================================================================
 const SY_STATE = 'companion_sync';           // { key, rev, last, hash }  (stays on this device, not in backups)
 const SY_WELCOME = 'companion_welcome_done';
 const SY_B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';

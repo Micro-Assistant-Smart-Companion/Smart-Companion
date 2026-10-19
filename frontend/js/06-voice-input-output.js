@@ -1,7 +1,4 @@
-// [06/19] microphone (auto-stop), live captions, read aloud
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 9. AUDIO CAPTURE & SPEECH SYNTHESIS ENGINE ---
-// The mic now stops BY ITSELF when you stop talking, and never sends silence to the server.
+// microphone (auto-stop), live captions, read aloud
 
 const LiveRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let liveRecognition = null;

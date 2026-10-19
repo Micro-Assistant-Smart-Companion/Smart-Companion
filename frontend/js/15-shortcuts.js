@@ -1,6 +1,4 @@
-// [15/19] keyboard shortcuts, Escape key
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 17. GLOBAL SHORTCUTS & ESCAPE LISTENER ---
+// keyboard shortcuts, Escape key
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
     e.preventDefault();

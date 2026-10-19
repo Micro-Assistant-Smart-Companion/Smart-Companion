@@ -1,6 +1,4 @@
-// [12/19] emergency contact storage and SOS message text
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 14.5. EMERGENCY CONTACTS STORAGE & ALERT SYSTEM ---
+// emergency contact storage and SOS message text
 
 const EMERGENCY_CONTACTS_KEY = 'companion_emergency_contacts';
 

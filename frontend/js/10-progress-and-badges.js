@@ -1,6 +1,4 @@
-// [10/19] streaks, badges, growth panel
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 13. PERSONAL GROWTH & CAPABILITY PROGRESS ---
+// streaks, badges, growth panel
 
 const GAMIFY_KEY = 'companion_gamify';
 const PLANT_STAGES = ['🌱 Seedling', '🌿 Sprout', '🪴 Branching', '🌳 Flourishing', '🌸 Master'];

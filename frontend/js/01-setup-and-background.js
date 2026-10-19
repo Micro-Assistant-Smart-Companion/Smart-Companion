@@ -1,5 +1,5 @@
-// [01/19] API address, page elements, animated background
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
+// API address, page elements, animated background
+
 let API = localStorage.getItem('companion_api_host') || ((window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
   ? `http://${window.location.hostname}:8000`
   : "http://127.0.0.1:8000");

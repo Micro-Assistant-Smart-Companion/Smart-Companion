@@ -1,6 +1,4 @@
 // [04/19] step cards, chat bubbles, timeline
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 7. STRUCTURED COGNITIVE TIMELINE & HERO STEP CARDS ---
 
 function addUserBubble(text, imageUrl) {
   if (!feedEl) return;
@@ -108,11 +106,10 @@ function addAssistantBubble(steps, isFinal) {
 
   awaitingClarification = false;
 
-  // Hero Micro-Step Component
   const wrap = document.createElement('div');
   wrap.className = 'step-sequence-wrap';
 
-  // Segmented Progression Deck
+  // Segmented Progression 
   const progressionDeck = document.createElement('div');
   progressionDeck.className = 'step-progression-deck';
   progressionDeck.innerHTML = `

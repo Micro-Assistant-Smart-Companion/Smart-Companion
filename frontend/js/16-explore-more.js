@@ -1,8 +1,4 @@
-// [16/19] links and images under an answer
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// ---- EXPLORE MORE: links + images under the answer ----
-// Paste at the bottom of app.js. Called from sendMessage (see step 3 in the guide).
-
+// links and images under an answer(explore more)
 function isSafeUrl(u) { return typeof u === 'string' && /^https?:\/\//i.test(u); }
 
 async function attachResources(goal, bubble) {

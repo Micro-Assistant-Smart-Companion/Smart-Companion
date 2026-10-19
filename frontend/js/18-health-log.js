@@ -1,7 +1,5 @@
-// [18/19] NEW health log: tabs, prescription upload, doctor PDF
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// ---- HEALTH LOG v2: easier to use, reads prescriptions, makes a PDF for the doctor ----
-// Paste at the very bottom of app.js. It takes over the "Health Log" button (the old panel is simply not opened any more).
+// NEW health log: tabs, prescription upload, doctor PDF
+//  to use, reads prescriptions, makes a PDF for the doctor
 // Everything is saved in this browser only. Old entries are kept: same keys, same format.
 
 const HL = {

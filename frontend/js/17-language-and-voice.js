@@ -1,7 +1,4 @@
-// [17/19] English / Hindi / Bengali picker and read-aloud voice
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// ---- MULTILINGUAL VOICE: English / Hindi / Bengali ----
-// Paste at the very bottom of app.js. Needs the 4 one-line edits in INTEGRATION.md.
+// English / Hindi / Bengali picker and read-aloud voice
 // Replies, speech-to-text AND read-aloud all follow the language picked in the little dropdown by the mic.
 
 const LANGS = {

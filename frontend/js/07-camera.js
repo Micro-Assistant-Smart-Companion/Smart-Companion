@@ -1,6 +1,4 @@
-// [07/19] webcam and phone IP camera
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 10. OPTICAL SENSOR HUB: WEBCAM & IP CAMERA ---
+// webcam and phone IP camera
 
 const btnSrcWebcam = document.getElementById('btnSrcWebcam');
 const btnSrcIp = document.getElementById('btnSrcIp');

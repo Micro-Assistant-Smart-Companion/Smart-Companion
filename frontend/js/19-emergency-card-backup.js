@@ -1,9 +1,4 @@
-// [19/20] emergency card, backup and restore
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-
-// ---- EMERGENCY MEDICAL CARD + BACKUP / RESTORE ----
-// Paste at the very bottom of app.js, AFTER health_log_v2.js (it adds two tabs to that panel).
-// Everything stays in this browser. Nothing here talks to the server.
+// emergency card, backup and restore
 
 const EC_KEY = 'companion_emergency_card';       // blood group, notes, "share in alert" switch
 const BK_LAST = 'companion_last_backup';
@@ -37,10 +32,6 @@ const EC_BLOOD = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   `;
   document.head.appendChild(st);
 })();
-
-// =====================================================================
-//  EMERGENCY CARD
-// =====================================================================
 
 function ecGet() {
   const c = hlGet(EC_KEY, {});
@@ -80,7 +71,6 @@ function ecHtml(d, big) {
   </div></div>`;
 }
 
-// lines added to the SOS message the user taps to send (only if the "share" switch is on)
 function ecAlertLines() {
   const d = ecData();
   if (!d.share) return '';
@@ -206,11 +196,7 @@ function hlTabCard(body) {
   }
 }
 
-// =====================================================================
-//  BACKUP / RESTORE
-// =====================================================================
-
-// what gets saved. (Not included: last location, camera address, backup date: they belong to this device only.)
+// backup
 const BK_KEYS = ['companion_health_log', 'companion_medicines', 'companion_conditions', 'companion_profile',
   'companion_doctor_notes', 'companion_report_range', 'companion_emergency_contacts', 'companion_emergency_card',
   'companion_gamify', 'companion_lang', 'companion_theme'];

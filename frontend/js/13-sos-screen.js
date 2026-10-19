@@ -1,11 +1,5 @@
-// [13/19] the emergency SOS screen, location, hospital directions
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 15. EMERGENCY SOS MEDICAL PROTOCOL ---
-
-// Caches the browser's last known location client-side, so we don't
-// re-ask GPS (with its own permission prompt + latency) on every single
-// lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls
-// how stale a cached fix is allowed to be before we fetch a fresh one.
+// the emergency SOS screen, location, hospital directions
+// Caches the browser's last known location client-side, so we don't  re-ask GPS (with its own permission prompt + latency) on every single lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls how stale a cached fix is allowed to be before we fetch a fresh one.
 const LOCATION_CACHE_KEY = 'companion_last_location';
 
 function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {

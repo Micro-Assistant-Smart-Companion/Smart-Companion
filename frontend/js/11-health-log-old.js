@@ -1,6 +1,4 @@
-// [11/19] OLD health log (kept only for its helper functions; the new panel is file 18)
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 14. PRIVATE HEALTH LOG SYSTEM ---
+// OLD health log (kept only for its helper functions; the new panel in file 18)
 
 const HEALTH_LOG_KEY = 'companion_health_log';
 

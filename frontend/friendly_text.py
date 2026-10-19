@@ -1,17 +1,3 @@
-"""
-Smart Companion - plain-language wording fixer.
-
-Replaces technical labels such as "CLARIFICATION REQUIRED 1 QUERY" and
-"KNOWLEDGE SYNTHESIS" (and many status / error messages) with simple words.
-
-How to use:
-  1. Put this file in your  frontend  folder (next to app.js and index.html).
-  2. Run:   python friendly_text.py
-  3. Hard refresh the page (Ctrl+F5).
-
-It first saves backups as app.js.bak and index.html.bak (only once), and it only
-changes text that it finds, so it is safe to run again.
-"""
 import os
 import re
 import shutil
@@ -21,15 +7,12 @@ FILES = ["app.js", "index.html"]
 
 # Regex replacements (multi-line blocks that are removed completely)
 REGEX_REMOVE = [
-    # "CLARIFICATION REQUIRED / 1 QUERY" header above a clarifying question
     r"\s*const header = document\.createElement\('div'\);\s*"
     r"header\.className = 'step-card-header';\s*"
     r"header\.innerHTML = `<span>CLARIFICATION REQUIRED</span><span>1 QUERY</span>`;\s*"
     r"wrap\.appendChild\(header\);",
 ]
 
-# (old, new). Order matters: longer / more specific texts first.
-# New texts contain no apostrophes or quotes so they cannot break the JS strings.
 PAIRS = [
     # --- labels above answers -------------------------------------------------
     ("<span>KNOWLEDGE SYNTHESIS</span><span>RETRIEVAL RESULT</span>", "<span>Smart Companion</span>"),

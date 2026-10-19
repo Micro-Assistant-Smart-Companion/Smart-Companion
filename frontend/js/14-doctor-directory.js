@@ -1,6 +1,4 @@
-// [14/19] nearby doctors and hospitals
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 16. CLINICAL DIRECTORY & LOCATION INTEGRATION ---
+// nearby doctors and hospitals
 
 const INDIA_HEALTH_HELPLINES = [
   { name: "National Health Helpline", phone: "104" },

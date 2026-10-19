@@ -1,6 +1,4 @@
-// [05/19] sending a message to the server (/decompose-task)
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 8. TASK DECOMPOSITION BACKEND INTEGRATION ---
+// sending a message to the server (/decompose-task), task decomposition integration, and handling the response
 
 async function callBackend(goal, resetTask) {
   if (resetTask) completedSteps = [];

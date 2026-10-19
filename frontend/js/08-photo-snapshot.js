@@ -1,6 +1,4 @@
-// [08/19] take or pick a photo, document upload
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 11. OPTICAL SNAPSHOT MODAL ---
+// take or pick a photo, document upload
 
 async function startSnapCapture() {
   if (currentCameraSource === 'webcam') {

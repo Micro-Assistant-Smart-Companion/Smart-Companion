@@ -1,6 +1,4 @@
-// [09/19] live camera help and scene description
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 12. VISION HUD WORKSPACE & CONTINUOUS SCENE REASONING ---
+// live camera help and scene description
 
 async function startGuidedSearch() {
   unlockBadge('live', 'Live Explorer');

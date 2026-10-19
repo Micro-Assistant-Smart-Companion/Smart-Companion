@@ -1,6 +1,5 @@
-// [02/19] light/dark theme, saved chat sessions
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 3. THEME SYSTEM (DARK / LIGHT / AUTO PERSISTENCE) ---
+// light/dark theme, saved chat sessions
+
 const THEME_KEY = 'companion_theme';
 let currentThemeSetting = localStorage.getItem(THEME_KEY) || 'dark';
 

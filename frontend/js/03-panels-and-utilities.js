@@ -1,6 +1,5 @@
-// [03/19] side panel, small helper functions, input box behaviour
-// Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
-// --- 5. RIGHT CONTEXT TELEMETRY PANEL LOGIC ---
+// side panel, small helper functions, input box behaviour
+
 const contextPanel = document.getElementById('contextPanel');
 const contextPanelToggleBtn = document.getElementById('contextPanelToggleBtn');
 const contextPanelCloseBtn = document.getElementById('contextPanelCloseBtn');
@@ -21,7 +20,6 @@ if (panelLaunchVisionBtn) {
   panelLaunchVisionBtn.addEventListener('click', () => startGuidedSearch());
 }
 
-// --- 6. UTILITIES & INPUT BEHAVIOR ---
 function setStatus(msg, isError = false) {
   if (!statusEl) return;
   statusEl.textContent = msg;
