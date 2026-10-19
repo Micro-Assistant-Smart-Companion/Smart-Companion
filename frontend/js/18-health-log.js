@@ -262,8 +262,8 @@ function hlTabConds(body, refresh) {
     list.unshift({ id: Date.now(), name, note: body.querySelector('#cdNote').value.trim(), source: 'me', addedAt: new Date().toISOString() });
     hlSet(HL.conds, list); refresh();
   };
-  body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
-    if (confirm('Remove this condition?')) { hlSet(HL.conds, list.filter(c => String(c.id) !== b.dataset.del)); refresh(); }
+  body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (await askConfirm({ title: 'Remove this condition?', message: 'It will be taken out of your Health Log and doctor report.', ok: 'Yes, remove', cancel: 'Keep it', danger: true })) { hlSet(HL.conds, list.filter(c => String(c.id) !== b.dataset.del)); refresh(); }
   });
 }
 
@@ -303,8 +303,8 @@ function hlTabMeds(body, refresh) {
   body.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
     const m = meds.find(x => String(x.id) === b.dataset.toggle); if (m) { m.active = !m.active; hlSet(HL.meds, meds); refresh(); }
   });
-  body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
-    if (confirm('Delete this medicine?')) { hlSet(HL.meds, meds.filter(m => String(m.id) !== b.dataset.del)); refresh(); }
+  body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (await askConfirm({ title: 'Delete this medicine?', message: 'It will be taken out of your medicine list.', ok: 'Yes, delete', cancel: 'Keep it', danger: true })) { hlSet(HL.meds, meds.filter(m => String(m.id) !== b.dataset.del)); refresh(); }
   });
 }
 

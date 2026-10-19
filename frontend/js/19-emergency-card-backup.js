@@ -1,5 +1,6 @@
-// [19/19] emergency card, backup and restore
+// [19/20] emergency card, backup and restore
 // Part of the Smart Companion page script. Loaded by index.html in numeric order; all files share one global scope.
+
 // ---- EMERGENCY MEDICAL CARD + BACKUP / RESTORE ----
 // Paste at the very bottom of app.js, AFTER health_log_v2.js (it adds two tabs to that panel).
 // Everything stays in this browser. Nothing here talks to the server.
@@ -229,7 +230,7 @@ function bkUnB64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let 
 function bkCollect(includeChats) {
   const data = {};
   BK_KEYS.concat(includeChats ? [BK_CHATS] : []).forEach(k => { try { const v = localStorage.getItem(k); if (v !== null) data[k] = v; } catch (e) {} });
-  return { app: 'smart-companion', kind: 'backup', version: 1, exportedAt: new Date().toISOString(), includesChats: !!includeChats, data };
+  return { app: 'smart-companion', kind: 'backup', version: 1, note: 'Smart Companion backup. Open the app and choose Restore on the welcome screen.', exportedAt: new Date().toISOString(), includesChats: !!includeChats, data };
 }
 
 async function bkKey(password, salt, iter) {
@@ -328,18 +329,21 @@ function bkHasData() { return !!(hlGet(HL.vitals, []).length || hlGet(HL.meds, [
 function bkNeedsNudge() {
   if (!bkHasData()) return false;
   let last = ''; try { last = localStorage.getItem(BK_LAST) || ''; } catch (e) {}
+  if (typeof syGet === 'function' && syGet()) return false;        // sync keeps it safe automatically
   return !last || (Date.now() - new Date(last).getTime()) > 30 * 86400000;
 }
 
-function hlTabBackup(body) {
+function hlTabBackup(body, rerender) {
   let last = ''; try { last = localStorage.getItem(BK_LAST) || ''; } catch (e) {}
-  const lock = bkCanEncrypt();
+  const lock = bkCanEncrypt(), sy = (typeof syGet === 'function') && syGet();
   body.innerHTML = `
-    <p class="hl2-hint">Your health data lives only in this browser. If you clear your browser data or change phone, it is gone. A backup file lets you bring it back.</p>
-    <div class="hl2-card"><div class="hl2-card-title">💾 Save a backup</div>
+    <p class="hl2-hint">Your health data is kept on this device. Turn on sync for an automatic private copy, and keep a backup file as a second safety net. On a new phone, choose "Restore" on the welcome screen with either one.</p>
+    ${typeof syCardHtml === 'function' ? syCardHtml() : ''}
+    <div class="hl2-card"><div class="hl2-card-title">💾 Save a backup file</div>
       <div class="hl2-hint" style="margin-bottom:8px">${last ? `Last backup: ${hlEsc(bkAgo(last))}` : 'You have not made a backup yet.'}</div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input type="checkbox" id="bkChats" style="width:18px;height:18px"> Also include my chat history (bigger file)</label>
-      ${lock ? `<input id="bkPass" type="password" autocomplete="new-password" placeholder="Password to protect the file (optional)" style="margin-bottom:6px">
+      ${sy ? `<div class="hl2-hint" style="margin:0 0 8px">🔒 This file is locked with your Sync key, so there is no second password to remember. To open it later you need that key.</div>`
+        : lock ? `<input id="bkPass" type="password" autocomplete="new-password" placeholder="Password to protect the file (optional)" style="margin-bottom:6px">
         <div class="hl2-hint" style="margin:0 0 8px">If you set a password, nobody can open the file without it, and <b>we cannot recover it</b> if you forget it.</div>`
         : `<div class="hl2-hint" style="margin:0 0 8px">Password protection needs a secure page (https or localhost), so it is switched off here.</div>`}
       <button class="hl2-btn wide" id="bkSave" type="button">⬇ Download backup</button>
@@ -351,16 +355,17 @@ function hlTabBackup(body) {
       <div class="hl2-err" id="bkRestoreMsg"></div><div id="bkPreview"></div></div>`;
 
   const q = s => body.querySelector(s);
+  if (typeof syBind === 'function') syBind(body, rerender || (() => hlTabBackup(body, rerender)));
 
   q('#bkSave').onclick = async ev => {
     const btn = ev.currentTarget, msg = q('#bkSaveMsg'); msg.textContent = ''; msg.className = 'hl2-err';
     btn.disabled = true;
     try {
       const plain = bkCollect(q('#bkChats').checked);
-      const pass = lock ? q('#bkPass').value : '';
-      const out = pass ? await bkEncrypt(plain, pass) : plain;
+      const pass = (!sy && lock && q('#bkPass')) ? q('#bkPass').value : '';
+      const out = sy ? await bkEncryptWithSync(plain, sy.key) : pass ? await bkEncrypt(plain, pass) : plain;
       const day = new Date().toISOString().slice(0, 10);
-      bkDownload(new Blob([JSON.stringify(out)], { type: 'application/json' }), `smart-companion-backup-${day}${pass ? '-protected' : ''}.json`);
+      bkDownload(new Blob([JSON.stringify(out)], { type: 'application/json' }), `smart-companion-backup-${day}${(pass || sy) ? '-protected' : ''}.json`);
       try { localStorage.setItem(BK_LAST, new Date().toISOString()); } catch (e) {}
       msg.className = 'hl2-ok'; msg.textContent = `✓ Saved. ${bkCountText(bkCount(plain.data))}`;
     } catch (e) { console.error(e); msg.textContent = 'Could not make the backup. Please try again.'; }
@@ -383,12 +388,13 @@ function hlTabBackup(body) {
 
 function bkAskPassword(env, box, msg) {
   if (!bkCanEncrypt()) { msg.textContent = 'This backup is password protected. Open the app on https or localhost to unlock it.'; return; }
-  box.innerHTML = `<div class="bk-drop"><div class="hl2-hint" style="margin-bottom:6px">This backup is protected. Enter its password.</div>
-    <div class="hl2-row"><input id="bkUnlockPass" type="password" autocomplete="off" placeholder="Password"><button class="hl2-btn" id="bkUnlock" type="button">Unlock</button></div></div>`;
+  const sync = env.kdf === 'sync-key';
+  box.innerHTML = `<div class="bk-drop"><div class="hl2-hint" style="margin-bottom:6px">This backup is protected. Enter ${sync ? 'your Sync key' : 'its password'}.</div>
+    <div class="hl2-row"><input id="bkUnlockPass" type="${sync ? 'text' : 'password'}" autocomplete="off" placeholder="${sync ? 'ABCD-EFGH-…' : 'Password'}"><button class="hl2-btn" id="bkUnlock" type="button">Unlock</button></div></div>`;
   const go = async () => {
     msg.textContent = '';
-    try { bkShowPreview(bkValidate(await bkDecrypt(env, box.querySelector('#bkUnlockPass').value)), box, msg); }
-    catch (e) { msg.textContent = e && e.message && !/operation/i.test(e.message) ? e.message : 'Wrong password, or the file is damaged.'; }
+    try { const pw = box.querySelector('#bkUnlockPass').value; bkShowPreview(bkValidate(sync ? await bkDecryptWithSync(env, pw) : await bkDecrypt(env, pw)), box, msg); }
+    catch (e) { msg.textContent = e && e.message && !/operation/i.test(e.message) ? e.message : (sync ? 'That key does not open this file.' : 'Wrong password, or the file is damaged.'); }
   };
   box.querySelector('#bkUnlock').onclick = go;
   box.querySelector('#bkUnlockPass').onkeydown = e => { if (e.key === 'Enter') go(); };
@@ -409,13 +415,13 @@ function bkShowPreview(v, box, msg) {
     if (!failed) setTimeout(() => location.reload(), 1200);
   };
   box.querySelector('#bkMerge').onclick = () => finish('merge');
-  box.querySelector('#bkReplace').onclick = () => {
-    if (confirm('This will replace the health data on this device with the backup. Continue?')) finish('replace');
+  box.querySelector('#bkReplace').onclick = async () => {
+    if (await askConfirm({ title: 'Replace everything on this phone?', message: 'Your current health data here will be swapped for the data in the backup.', ok: 'Yes, replace', cancel: 'No, go back', danger: true })) finish('replace');
   };
 }
 
 // small reminder at the top of "Today" when there is data but no recent backup
 function bkNudgeHtml() {
   return bkNeedsNudge()
-    ? `<div class="hl2-nudge"><span>💾 Your data is only on this device. Make a backup copy.</span><button type="button" class="hl2-btn small" id="bkNudgeGo">Back up</button></div>` : '';
+    ? `<div class="hl2-nudge"><span>💾 Your data is only on this device. Turn on sync or save a backup.</span><button type="button" class="hl2-btn small" id="bkNudgeGo">Back up</button></div>` : '';
 }

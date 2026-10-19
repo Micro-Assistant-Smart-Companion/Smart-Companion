@@ -51,6 +51,22 @@
     leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
     plant: '<path d="M12 22v-9"/><path d="M12 13c0-3 2-5 5-5 0 3-2 5-5 5z"/><path d="M12 15c0-2.5-1.8-4.5-4.5-4.5 0 2.5 1.8 4.5 4.5 4.5z"/><path d="M7 22h10"/>',
     tree: '<path d="M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z"/><path d="M12 19v3"/>',
+    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+    stethoscope: '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+    droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+    thermometer: '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+    ruler: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>',
+    pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
+    restore: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+    cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
+    hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    dot: '<circle cx="12" cy="12" r="4" fill="currentColor"/>',
     flower: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>'
   };
 
@@ -76,7 +92,11 @@
     ['\u{1F4E8}', 'send'], ['\u{1F399}', 'mic'], ['\u2713', 'check'], ['\u2714', 'check'],
     ['\u2715', 'x'], ['\u2716', 'x'], ['\u2192', 'arrow'], ['\u25B8', 'chevron'], ['\u2197', 'external'],
     ['\u25CB', 'circle'], ['\u{1F331}', 'sprout'], ['\u{1F33F}', 'leaf'], ['\u{1FAB4}', 'plant'],
-    ['\u{1F333}', 'tree'], ['\u{1F338}', 'flower']
+    ['\u{1F333}', 'tree'], ['\u{1F338}', 'flower'],
+    ['\u{1F4F7}', 'camera'], ['\u{1FA7A}', 'stethoscope'], ['\u{1FA78}', 'droplet'], ['\u{1F912}', 'thermometer'],
+    ['\u{1F4CF}', 'ruler'], ['\u{1F4DD}', 'pen'], ['\u{1F512}', 'lock'], ['\u{1F511}', 'key'],
+    ['\u{1F4BE}', 'save'], ['\u267B', 'restore'], ['\u{1F4C2}', 'folder'], ['\u2B07', 'download'],
+    ['\u2601', 'cloud'], ['\u23F0', 'alarm'], ['\u{1F44B}', 'hand'], ['\u25CF', 'dot']
   ];
   const LOOKUP = {};
   PAIRS.forEach(function (p) { LOOKUP[p[0]] = p[1]; });
@@ -149,11 +169,61 @@
     try {
       muts.forEach(function (m) {
         if (m.type === 'characterData') processTextNode(m.target);
-        else m.addedNodes.forEach(walk);
+        else m.addedNodes.forEach(function (n) { walk(n); decorateDialog(n); });
       });
     } finally {
       observer.observe(document.body, OBS_OPTS);
     }
+  }
+
+  // ---- Friendly confirm box (replaces the browser's confirm()) -------------------
+  // pfConfirm({title, message, ok, cancel, danger}) -> Promise<boolean>
+  function pfConfirm(opts) {
+    if (typeof opts === 'string') opts = { message: opts };
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      const prev = document.activeElement;
+      const ov = document.createElement('div');
+      ov.className = 'pf-confirm-overlay';
+      ov.innerHTML =
+        '<div class="pf-confirm" role="alertdialog" aria-modal="true" aria-labelledby="pfcT" aria-describedby="pfcM">' +
+        '<div class="pf-confirm-icon' + (opts.danger ? ' danger' : '') + '">' + icon(opts.danger ? 'alert' : 'checkcircle') + '</div>' +
+        '<h2 id="pfcT" class="pf-confirm-title"></h2><p id="pfcM" class="pf-confirm-msg"></p>' +
+        '<div class="pf-confirm-actions">' +
+        '<button type="button" class="pf-btn pf-btn-ghost" data-r="0"></button>' +
+        '<button type="button" class="pf-btn ' + (opts.danger ? 'pf-btn-danger' : 'pf-btn-main') + '" data-r="1"></button></div></div>';
+      ov.querySelector('#pfcT').textContent = opts.title || 'Are you sure?';
+      ov.querySelector('#pfcM').textContent = opts.message || '';
+      const bNo = ov.querySelector('[data-r="0"]'), bYes = ov.querySelector('[data-r="1"]');
+      bNo.textContent = opts.cancel || 'No, go back';
+      bYes.textContent = opts.ok || 'Yes, continue';
+      function done(v) { document.removeEventListener('keydown', onKey, true); ov.remove(); try { prev && prev.focus && prev.focus(); } catch (e) {} resolve(v); }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+        else if (e.key === 'Tab') {                       // keep focus inside the box
+          e.preventDefault(); (document.activeElement === bNo ? bYes : bNo).focus();
+        }
+      }
+      ov.addEventListener('click', function (e) { if (e.target === ov) done(false); });
+      bNo.onclick = function () { done(false); };
+      bYes.onclick = function () { done(true); };
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(ov);
+      bNo.focus();                                         // the safe choice is focused first
+    });
+  }
+  window.pfConfirm = pfConfirm;
+
+  // Give every dialog a proper role and name so screen readers announce it
+  function decorateDialog(node) {
+    if (!node || node.nodeType !== 1 || !node.matches) return;
+    const el = node.matches('.settings-modal, .modal-dialog-overlay, #wcOverlay') ? node : null;
+    if (!el || el.dataset.pfDecorated) return;
+    el.dataset.pfDecorated = '1';
+    if (!el.getAttribute('role')) el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    const t = el.querySelector('.dialog-title, .pf-welcome-title');
+    if (t && !el.getAttribute('aria-label')) el.setAttribute('aria-label', t.textContent.trim());
   }
 
   // ---- Extras ----------------------------------------------------------------

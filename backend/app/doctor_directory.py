@@ -290,28 +290,7 @@ def dispatch_emergency_alert(a: EmergencyAlertIn):
             (a.contact_name, a.contact_phone, a.message, a.lat, a.lon, a.hospital_name))
         alert_id = cur.lastrowid
 
-    # Optional Twilio SMS dispatch if environment variables exist
-    sms_sent = False
-    twilio_error = None
-    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_from = os.getenv("TWILIO_PHONE_NUMBER")
-    if twilio_sid and twilio_token and twilio_from:
-        try:
-            from twilio.rest import Client
-            client = Client(twilio_sid, twilio_token)
-            client.messages.create(
-                body=a.message,
-                from_=twilio_from,
-                to=a.contact_phone
-            )
-            sms_sent = True
-            print(f"[EMERGENCY ALERT] Twilio SMS dispatched successfully to {a.contact_phone}")
-        except Exception as exc:
-            twilio_error = str(exc)
-            print(f"[EMERGENCY ALERT] Twilio SMS failed: {exc}")
-
-    # Generate quick WhatsApp and SMS fallback links
+    # WhatsApp link the user can tap to send the message themselves
     digits = re.sub(r"\D", "", a.contact_phone)
     if len(digits) == 10:
         digits = "91" + digits
@@ -320,8 +299,6 @@ def dispatch_emergency_alert(a: EmergencyAlertIn):
     return {
         "alert_id": alert_id,
         "status": "dispatched",
-        "sms_gateway_sent": sms_sent,
-        "twilio_error": twilio_error,
         "contact_name": a.contact_name,
         "contact_phone": a.contact_phone,
         "whatsapp_link": wa_link,

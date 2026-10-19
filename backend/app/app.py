@@ -40,11 +40,20 @@ from app.doctor_directory import router as directory_router, init_db
 from app.triage import check_emergency, EMERGENCY_TEXT
 from app.prescription import extract_prescription
 from app.resources import get_resources
+from app.sync import router as sync_router
 
 app = FastAPI(title="Smart Companion API")
 
+# the page checks /camera/status every few seconds; keep those lines out of the console
+import logging
+class _HideCameraStatus(logging.Filter):
+    def filter(self, record):
+        return "/camera/status" not in record.getMessage()
+logging.getLogger("uvicorn.access").addFilter(_HideCameraStatus())
+
 init_db()
 app.include_router(directory_router)
+app.include_router(sync_router)
 
 CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
 camera = IPCameraStream(CAMERA_URL)

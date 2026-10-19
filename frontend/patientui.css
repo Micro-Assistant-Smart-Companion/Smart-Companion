@@ -313,3 +313,255 @@ html, body {
   .sos-actions-row, .sos-contact-actions { flex-direction: column; }
   .btn-sos-navigate { min-width: 0; width: 100%; }
 }
+
+
+/* --- 12. Dialogs, Health Log, Backup and Sync, made easier for patients -------
+   Bigger text, bigger buttons, calm spacing, clear titles, bottom sheet on phones.
+   Selectors start with .settings-box.hl2-box so they win over the Health Log's own
+   small styles (those are added by script after this file loads). */
+
+.settings-modal, .modal-dialog-overlay {
+  background-color: rgba(6, 8, 16, 0.82);
+  backdrop-filter: blur(6px);
+  padding: 20px;
+}
+.settings-box, .modal-dialog-window {
+  border-radius: 20px;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  max-height: 92vh;
+}
+.dialog-header { padding: 18px 22px 14px; gap: 12px; }
+.dialog-title { font-size: calc(20px * var(--pf-t)); line-height: 1.3; }
+.dialog-badge { font-size: calc(12px * var(--pf-t)); letter-spacing: 0.07em; }
+.dialog-close-btn {
+  min-width: 46px; min-height: 46px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.dialog-close-btn:hover { background: var(--bg-surface-hover); }
+.dialog-body, .dialog-body-split { padding: 20px 22px 24px; gap: 16px; }
+
+/* Health Log panel: its content used to touch the edges of the box */
+.settings-box.hl2-box {
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 6px;
+  overflow-y: auto;
+}
+.settings-box.hl2-box > * { flex-shrink: 0; }
+.settings-box.hl2-box > :not(.dialog-header) { margin-left: 22px !important; margin-right: 22px !important; }
+.settings-box.hl2-box > .hl2-body { margin-left: 0 !important; margin-right: 0 !important; padding: 4px 22px 18px; }
+.settings-box.hl2-box > .hl2-body { flex: 1 1 auto; max-height: none; min-height: 170px; overflow-y: auto; }
+.settings-box.hl2-box .hl2-body::-webkit-scrollbar { width: 8px; }
+.settings-box.hl2-box .hl2-body::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 8px; }
+
+.settings-box.hl2-box .hl2-upload {
+  padding: 16px 18px;
+  border-radius: 16px;
+  gap: 14px;
+  font-size: calc(16px * var(--pf-t));
+  font-weight: 600;
+  min-height: 72px;
+}
+.settings-box.hl2-box .hl2-upload small { font-size: calc(14px * var(--pf-t)); line-height: 1.5; margin-top: 3px; }
+.settings-box.hl2-box .hl2-upload .pf-ic { width: 30px; height: 30px; color: var(--accent-purple); }
+
+/* tabs: three big buttons per row instead of six cramped ones */
+.settings-box.hl2-box .hl2-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; margin-bottom: 14px; }
+.settings-box.hl2-box .hl2-tab {
+  min-width: 0;
+  min-height: 52px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  font-size: calc(14.5px * var(--pf-t));
+  font-weight: 600;
+  line-height: 1.25;
+  display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  border: 1.5px solid var(--border-medium);
+  color: var(--text-primary);
+}
+.settings-box.hl2-box .hl2-tab .pf-ic { width: 20px; height: 20px; flex-shrink: 0; }
+.settings-box.hl2-box .hl2-tab.on {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+  color: #ffffff;
+}
+
+.settings-box.hl2-box .hl2-hint { font-size: calc(14.5px * var(--pf-t)); line-height: 1.6; color: var(--text-secondary); margin-bottom: 12px; }
+.settings-box.hl2-box .hl2-err { font-size: calc(14.5px * var(--pf-t)); line-height: 1.5; min-height: 20px; }
+.settings-box.hl2-box .hl2-ok { font-size: calc(14.5px * var(--pf-t)); line-height: 1.5; font-weight: 600; }
+.settings-box.hl2-box .hl2-sub { font-size: calc(13px * var(--pf-t)); margin: 18px 0 8px; }
+
+.settings-box.hl2-box .hl2-card { padding: 16px 18px; border-radius: 16px; margin-bottom: 14px; }
+.settings-box.hl2-box .hl2-card-title { font-size: calc(17px * var(--pf-t)); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.settings-box.hl2-box .hl2-card-title .pf-ic { width: 22px; height: 22px; color: var(--accent-purple); }
+
+.settings-box.hl2-box .hl2-btn {
+  min-height: 50px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-size: calc(15.5px * var(--pf-t));
+  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.settings-box.hl2-box .hl2-btn.small { min-height: 44px; padding: 8px 16px; font-size: calc(14.5px * var(--pf-t)); }
+.settings-box.hl2-box .hl2-btn.wide { width: 100%; }
+.settings-box.hl2-box .hl2-btn.ghost { border-width: 1.5px; border-color: var(--border-medium); color: var(--text-primary); }
+.settings-box.hl2-box .hl2-btn.ghost.danger { color: var(--accent-rose); border-color: var(--accent-rose); }
+.settings-box.hl2-box .hl2-btn + .hl2-btn { margin-top: 8px; }
+.settings-box.hl2-box .hl2-row .hl2-btn + .hl2-btn { margin-top: 0; }
+.settings-box.hl2-box .hl2-row { gap: 10px; }
+
+.settings-box.hl2-box input,
+.settings-box.hl2-box select,
+.settings-box.hl2-box textarea {
+  min-height: 50px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: calc(16px * var(--pf-t)) !important;
+  border: 1.5px solid var(--border-medium);
+}
+.settings-box.hl2-box input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; }
+.settings-box.hl2-box input:focus, .settings-box.hl2-box select:focus, .settings-box.hl2-box textarea:focus { border-color: var(--accent-purple); }
+
+.settings-box.hl2-box .hl2-item { padding: 14px 16px; border-radius: 14px; font-size: calc(15.5px * var(--pf-t)); margin-bottom: 10px; gap: 12px; }
+.settings-box.hl2-box .hl2-item .meta { font-size: calc(14px * var(--pf-t)); line-height: 1.5; margin-top: 4px; }
+.settings-box.hl2-box .hl2-tag { font-size: calc(12.5px * var(--pf-t)); padding: 2px 8px; border-radius: 8px; }
+.settings-box.hl2-box .hl2-check { padding: 14px; border-radius: 14px; }
+.settings-box.hl2-box .hl2-nudge { font-size: calc(14.5px * var(--pf-t)); padding: 12px 14px; border-radius: 14px; }
+.settings-box.hl2-box .bk-drop { padding: 14px; border-radius: 14px; }
+.settings-box.hl2-box .bk-counts { font-size: calc(15px * var(--pf-t)); line-height: 1.7; }
+.settings-box.hl2-box .hl2-more summary { font-size: calc(14.5px * var(--pf-t)); min-height: 44px; display: flex; align-items: center; }
+
+/* Sync key: easy to read and to copy */
+.settings-box.hl2-box #syKeyBox > div:first-child {
+  font-size: calc(20px * var(--pf-t)) !important;
+  line-height: 1.5 !important;
+  padding: 14px !important;
+  text-align: center;
+  border-radius: 14px !important;
+  background: var(--bg-base);
+  user-select: all;
+}
+
+/* --- Friendly confirm box (made by icon.js, replaces the browser's confirm) --- */
+.pf-confirm-overlay {
+  position: fixed; inset: 0; z-index: 100000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(6, 8, 16, 0.84);
+  backdrop-filter: blur(6px);
+}
+.pf-confirm {
+  width: 100%; max-width: 420px;
+  padding: 26px 24px 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  text-align: center;
+  animation: pfPop 0.16s ease-out;
+}
+@keyframes pfPop { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: none; } }
+.pf-confirm-icon {
+  width: 60px; height: 60px; margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-purple-subtle); color: var(--accent-purple);
+}
+.pf-confirm-icon.danger { background: var(--accent-rose-subtle); color: var(--accent-rose); }
+.pf-confirm-icon .pf-ic { width: 30px; height: 30px; margin: 0; }
+.pf-confirm-title { font-size: calc(21px * var(--pf-t)); font-weight: 700; line-height: 1.3; margin-bottom: 8px; color: var(--text-primary); }
+.pf-confirm-msg { font-size: calc(16.5px * var(--pf-t)); line-height: 1.6; color: var(--text-secondary); margin-bottom: 22px; }
+.pf-confirm-actions { display: flex; flex-direction: column-reverse; gap: 10px; }
+.pf-btn {
+  min-height: 54px; padding: 12px 20px; width: 100%;
+  border-radius: 15px; border: 1.5px solid transparent;
+  font-size: calc(16.5px * var(--pf-t)); font-weight: 700; cursor: pointer;
+}
+.pf-btn-main { background: var(--accent-purple); color: #ffffff; }
+.pf-btn-main:hover { background: var(--accent-purple-hover); }
+.pf-btn-danger { background: var(--accent-rose); color: #ffffff; }
+.pf-btn-danger:hover { filter: brightness(0.92); }
+.pf-btn-ghost { background: transparent; color: var(--text-primary); border-color: var(--border-medium); }
+.pf-btn-ghost:hover { background: var(--bg-surface-hover); }
+@media (min-width: 480px) {
+  .pf-confirm-actions { flex-direction: row; }
+  .pf-btn { flex: 1; }
+}
+
+/* --- Welcome / restore screen ------------------------------------------------- */
+#wcOverlay {
+  position: fixed; inset: 0; z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(6, 8, 16, 0.86);
+  backdrop-filter: blur(6px);
+}
+.pf-welcome-box {
+  width: 100%; max-width: 480px; max-height: 94vh; overflow-y: auto;
+  padding: 28px 24px 22px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.pf-welcome-ic {
+  width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-purple-subtle); color: var(--accent-purple); font-size: 30px;
+}
+.pf-welcome-ic .pf-ic { width: 32px; height: 32px; margin: 0; }
+.pf-welcome-title { font-size: calc(24px * var(--pf-t)); font-weight: 700; text-align: center; margin-bottom: 8px; }
+.pf-welcome-sub { font-size: calc(16px * var(--pf-t)); line-height: 1.6; text-align: center; color: var(--text-secondary); margin-bottom: 20px; }
+.pf-choice {
+  display: flex; align-items: center; gap: 16px; width: 100%;
+  min-height: 72px; padding: 14px 18px; margin-bottom: 10px;
+  text-align: left; cursor: pointer;
+  background: var(--bg-subtle); color: var(--text-primary);
+  border: 1.5px solid var(--border-medium); border-radius: 16px;
+  font-family: inherit;
+}
+.pf-choice:hover { border-color: var(--accent-purple); background: var(--accent-purple-subtle); }
+.pf-choice .pf-ic { width: 28px; height: 28px; margin: 0; color: var(--accent-purple); }
+.pf-choice strong { display: block; font-size: calc(16.5px * var(--pf-t)); font-weight: 700; }
+.pf-choice small { display: block; font-size: calc(14px * var(--pf-t)); color: var(--text-secondary); margin-top: 2px; line-height: 1.45; }
+.pf-choice.quiet { background: transparent; border-style: dashed; }
+.pf-choice.quiet .pf-ic { color: var(--text-muted); }
+.pf-welcome-form { display: flex; flex-direction: column; gap: 12px; }
+.pf-welcome-form label { font-size: calc(15px * var(--pf-t)); color: var(--text-secondary); line-height: 1.5; }
+.pf-welcome-form input {
+  width: 100%; min-height: 54px; padding: 12px 14px;
+  font-size: calc(18px * var(--pf-t)); letter-spacing: 0.04em;
+  background: var(--bg-input); color: var(--text-primary);
+  border: 1.5px solid var(--border-medium); border-radius: 14px;
+}
+.pf-welcome-form input:focus { border-color: var(--accent-purple); outline: none; }
+.pf-link { background: none; border: none; color: var(--text-secondary); font-size: calc(15px * var(--pf-t)); min-height: 44px; cursor: pointer; text-decoration: underline; }
+#wcMsg { margin-top: 12px; font-size: calc(15px * var(--pf-t)); line-height: 1.5; min-height: 22px; text-align: center; }
+#wcMsg.hl2-err { color: var(--accent-rose); }
+#wcMsg.hl2-ok { color: var(--accent-mint); font-weight: 600; }
+
+/* --- Phones: dialogs rise from the bottom like a sheet ------------------------ */
+@media (max-width: 640px) {
+  .settings-modal, .modal-dialog-overlay { align-items: flex-end; padding: 0; }
+  .settings-box, .modal-dialog-window {
+    max-width: none; max-height: 94vh;
+    border-radius: 24px 24px 0 0; border-bottom: none;
+  }
+  .settings-box.hl2-box > :not(.dialog-header) { margin-left: 16px !important; margin-right: 16px !important; }
+  .settings-box.hl2-box > .hl2-body { padding: 4px 16px 18px; margin-left: 0 !important; margin-right: 0 !important; }
+  .dialog-header { padding: 16px 16px 12px; }
+  .settings-box.hl2-box .hl2-upload { min-height: 64px; padding: 12px 14px; }
+  .settings-box.hl2-box .hl2-tab { font-size: calc(13.5px * var(--pf-t)); padding: 8px 4px; }
+  .pf-confirm-overlay, #wcOverlay { align-items: flex-end; padding: 0; }
+  .pf-confirm, .pf-welcome-box { max-width: none; border-radius: 24px 24px 0 0; padding-bottom: 28px; }
+}
+
+/* Buttons used outside the Health Log panel (for example the emergency card) */
+.hl2-btn { min-height: 46px; border-radius: 12px; font-size: calc(14.5px * var(--pf-t)); }

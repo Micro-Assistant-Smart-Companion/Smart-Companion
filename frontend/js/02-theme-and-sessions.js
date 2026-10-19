@@ -187,8 +187,13 @@ function renderSidebar() {
   });
 }
 
-function deleteSession(label) {
-  if (!confirm(`Delete conversation "${sessions[label].name}"?`)) return;
+// Friendly confirm box (icon.js provides pfConfirm; the browser's confirm() is the fallback)
+function askConfirm(opts) {
+  return window.pfConfirm ? window.pfConfirm(opts) : Promise.resolve(confirm(opts.message));
+}
+
+async function deleteSession(label) {
+  if (!(await askConfirm({ title: 'Delete this conversation?', message: `"${sessions[label].name}" will be removed from this device.`, ok: 'Yes, delete', cancel: 'Keep it', danger: true }))) return;
 
   delete sessions[label];
   if (Object.keys(sessions).length === 0) {
@@ -220,8 +225,8 @@ function deleteSession(label) {
   persistSessions();
 }
 
-function clearAllSessions() {
-  if (!confirm('Delete all conversations?')) return;
+async function clearAllSessions() {
+  if (!(await askConfirm({ title: 'Delete all conversations?', message: 'Every chat on this device will be removed. Your Health Log is not affected.', ok: 'Yes, delete all', cancel: 'Keep them', danger: true }))) return;
   localStorage.removeItem(SESSIONS_KEY);
   sessions = {
     general: {

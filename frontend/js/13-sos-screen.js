@@ -242,7 +242,7 @@ function showEmergencyPanel() {
         const badge = contactArea.querySelector('#sosAlertStatusBadge');
         if (badge) {
           badge.className = 'sos-alert-badge dispatched';
-          badge.textContent = resData.sms_gateway_sent ? '✅ SMS Gateway Sent' : '✅ Alert Dispatched & Logged';
+          badge.textContent = '✅ Alert Dispatched & Logged';
         }
       })
       .catch(() => {
