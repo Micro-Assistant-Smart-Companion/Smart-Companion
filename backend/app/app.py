@@ -24,9 +24,8 @@ from app.models import (
     CameraConfig, CameraStatusResponse,
     DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse, NearbyRequest
 )
-# pyrefly: ignore [missing-import]
+
 from app.redact import redact_text
-# pyrefly: ignore [missing-import]
 from app.llm import decompose_task
 from visual.vision import detect_objects_summary
 from visual.caption import answer_about_image
@@ -44,7 +43,6 @@ from app.sync import router as sync_router
 
 app = FastAPI(title="Smart Companion API")
 
-# the page checks /camera/status every few seconds; keep those lines out of the console
 import logging
 class _HideCameraStatus(logging.Filter):
     def filter(self, record):
