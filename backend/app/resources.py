@@ -5,6 +5,7 @@
 #   - DuckDuckGo search  -> 1-2 other web links (optional; skipped if not installed)
 # Nothing is invented: every link and image comes from a real search result.
 
+import re
 import requests
 from app.llm import client, extract_json
 
@@ -14,18 +15,66 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
 _cache = {}  # topic -> result, so repeat questions are instant
 
+# --- When is "Explore more" useful? Only when the person wants to LEARN something:
+# study topics, general knowledge, or cooking. Not for greetings, thanks, chores,
+# plans, feelings, health, or follow-ups about the chat itself.
+SMALL_TALK = {
+    "hi", "hii", "hiii", "hey", "heyy", "hello", "helo", "hola", "yo", "sup", "namaste", "namaskar",
+    "good morning", "good afternoon", "good evening", "good night", "gm", "gn",
+    "thanks", "thank you", "thanks a lot", "thx", "ty", "ok", "okay", "k", "cool", "nice", "great", "awesome",
+    "bye", "goodbye", "see you", "got it", "yes", "no", "yeah", "yep", "nope", "sure", "please", "sorry",
+    "welcome", "how are you", "how r u", "who are you", "what can you do", "whats up", "what's up",
+    "hey there", "hello there", "hi there", "hey companion", "hello companion",
+    "नमस्ते", "नमस्कार", "हेलो", "हैलो", "हाय", "धन्यवाद", "शुक्रिया", "ठीक है", "जी", "हाँ", "नहीं", "अलविदा",
+    "হ্যালো", "হাই", "নমস্কার", "ধন্যবাদ", "ঠিক আছে", "হ্যাঁ", "না", "বিদায়",
+}
+_GREET_START = re.compile(r"^(hi+|hey+|hello+|helo|hola|namaste|good (morning|afternoon|evening|night))\b", re.I)
+_INFO_START = re.compile(
+    r"^(what|why|how|who|when|where|which|explain|define|describe|tell me|teach|recipe|cook|bake|make|"
+    r"meaning of|difference between|solve|derive|prove|summar|notes on|about)\b", re.I)
+
+
+def is_small_talk(goal: str) -> bool:
+    """True for greetings, thanks, one-word replies and chit-chat. No AI call needed."""
+    g = re.sub(r"[^\w\s\u0900-\u097F\u0980-\u09FF']", " ", (goal or "").lower())
+    g = re.sub(r"\s+", " ", g).strip()
+    if not g or g in SMALL_TALK:
+        return True
+    words = g.split()
+    # "hey how are you", "hello can you help me": a greeting plus no real topic
+    if _GREET_START.match(g) and len(words) <= 6:
+        rest = " ".join(words[1:])
+        chat = ("how are", "how r u", "can you help", "who are", "what can you", "i need help", "help me", "i want help", "whats up", "what s up")
+        if not rest or rest in SMALL_TALK or rest.startswith(chat):
+            return True
+    return False
+
+
+def looks_informational(goal: str) -> bool:
+    """Used only if the AI check fails: a careful guess from the wording."""
+    return bool(_INFO_START.match((goal or "").strip().lower()))
+
 
 def extract_topic(goal: str) -> dict:
     """Ask the LLM for a clean topic + search phrases. Falls back to the raw goal."""
-    fallback = {"topic": goal, "web_query": goal, "image_query": goal}
-    prompt = f"""From the user's request below, give search phrases.
+    fallback = {"topic": goal, "web_query": goal, "image_query": goal,
+                "kind": "knowledge" if looks_informational(goal) else "other"}
+    prompt = f"""From the user's request below, give search phrases and say what kind of request it is.
 Respond with ONLY raw JSON in this shape:
-{{"topic": "2-4 word main subject", "web_query": "best web search phrase to learn or do this", "image_query": "2-4 words for a helpful diagram or photo"}}
+{{"kind": "study | knowledge | cooking | other", "topic": "2-4 word main subject", "web_query": "best web search phrase to learn or do this", "image_query": "2-4 words for a helpful diagram or photo"}}
+
+"kind" rules:
+- "study": a school or college subject, exam topic, concept, formula, or how something works.
+- "knowledge": a general fact or explanation (science, history, people, places, technology, the world).
+- "cooking": a recipe, a food, or a cooking technique.
+- "other": greetings, thanks, small talk, chores, tidying, plans, schedules, errands, bookings, reminders, feelings, health or medical questions, follow-up questions about the earlier chat, or anything that is not about learning a topic.
 
 Example: "how to make biryani" ->
-{{"topic": "Biryani", "web_query": "easy chicken biryani recipe", "image_query": "biryani"}}
+{{"kind": "cooking", "topic": "Biryani", "web_query": "easy chicken biryani recipe", "image_query": "biryani"}}
 Example: "what is a black hole" ->
-{{"topic": "Black hole", "web_query": "what is a black hole explained", "image_query": "black hole diagram"}}
+{{"kind": "knowledge", "topic": "Black hole", "web_query": "what is a black hole explained", "image_query": "black hole diagram"}}
+Example: "clean my study desk" ->
+{{"kind": "other", "topic": "Desk", "web_query": "", "image_query": ""}}
 
 Request: "{goal}"
 """
@@ -42,6 +91,7 @@ Request: "{goal}"
                 "topic": data["topic"],
                 "web_query": data.get("web_query") or data["topic"],
                 "image_query": data.get("image_query") or data["topic"],
+                "kind": str(data.get("kind") or "other").lower(),
             }
     except Exception as e:
         print(f"[resources] topic extraction failed: {e}")
@@ -121,8 +171,16 @@ def web_links(query: str, n: int = 2):
         return []
 
 
+EMPTY = {"topic": "", "links": [], "images": []}
+EXPLORE_KINDS = {"study", "knowledge", "cooking"}
+
+
 def get_resources(goal: str) -> dict:
+    if is_small_talk(goal):                 # "hey", "thanks"... nothing to explore, and no AI call spent
+        return EMPTY
     t = extract_topic(goal)
+    if t.get("kind") not in EXPLORE_KINDS:  # chores, plans, health, follow-ups...
+        return EMPTY
     key = t["topic"].lower()
     if key in _cache:
         return _cache[key]
