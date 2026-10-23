@@ -1,10 +1,3 @@
-# resources.py - "Explore more": finds 2-3 good links + a few images/diagrams
-# for whatever the user asked. Everything here is FREE and needs no API key:
-#   - Wikipedia API      -> best encyclopedia link + lead image
-#   - Wikimedia Commons  -> real diagrams / photos (openly licensed)
-#   - DuckDuckGo search  -> 1-2 other web links (optional; skipped if not installed)
-# Nothing is invented: every link and image comes from a real search result.
-
 import re
 import requests
 from app.llm import client, extract_json
@@ -13,11 +6,8 @@ HEADERS = {"User-Agent": "SmartCompanion/1.0 (final-year student project)"}
 WIKI_API = "https://en.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
-_cache = {}  # topic -> result, so repeat questions are instant
+_cache = {} 
 
-# --- When is "Explore more" useful? Only when the person wants to LEARN something:
-# study topics, general knowledge, or cooking. Not for greetings, thanks, chores,
-# plans, feelings, health, or follow-ups about the chat itself.
 SMALL_TALK = {
     "hi", "hii", "hiii", "hey", "heyy", "hello", "helo", "hola", "yo", "sup", "namaste", "namaskar",
     "good morning", "good afternoon", "good evening", "good night", "gm", "gn",
@@ -84,6 +74,7 @@ Request: "{goal}"
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
             temperature=0.2,
+            extra_body={"reasoning_effort": "low"},
         )
         data = extract_json((r.choices[0].message.content or "").strip())
         if data and data.get("topic"):
@@ -176,10 +167,10 @@ EXPLORE_KINDS = {"study", "knowledge", "cooking"}
 
 
 def get_resources(goal: str) -> dict:
-    if is_small_talk(goal):                 # "hey", "thanks"... nothing to explore, and no AI call spent
+    if is_small_talk(goal):                 
         return EMPTY
     t = extract_topic(goal)
-    if t.get("kind") not in EXPLORE_KINDS:  # chores, plans, health, follow-ups...
+    if t.get("kind") not in EXPLORE_KINDS:  
         return EMPTY
     key = t["topic"].lower()
     if key in _cache:

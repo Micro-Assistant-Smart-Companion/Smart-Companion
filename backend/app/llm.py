@@ -2,7 +2,7 @@ import os
 import json
 import re
 import time
-from groq import Groq
+from groq import Groq, RateLimitError
 
 api_key = os.environ.get("GROQ_API_KEY")
 if not api_key:
@@ -161,14 +161,29 @@ Input: "{goal}"
 """
 
 
+class RateLimited(Exception):
+    """Groq said 'too many tokens this minute' and waiting a little did not help."""
+
+
 def _call_model(prompt: str):
     start = time.time()
-    response = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=1024,
-        temperature=0.4,
-    )
+    for attempt in range(2):
+        try:
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-20b",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=700,      # the limit counts the tokens we ask to reserve, so keep this modest
+                temperature=0.4,
+                extra_body={"reasoning_effort": "low"},   # less hidden thinking -> the answer is not cut off
+            )
+            break
+        except RateLimitError as exc:
+            m = re.search(r"try again in ([\d.]+)s", str(exc))
+            wait = float(m.group(1)) + 0.5 if m else 8
+            if attempt == 1 or wait > 15:
+                raise RateLimited() from exc
+            print(f"[rate limit] waiting {wait:.1f}s then trying once more")
+            time.sleep(wait)
     elapsed = time.time() - start
     raw_text = (response.choices[0].message.content or "").strip()
     return raw_text, elapsed
@@ -180,7 +195,11 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
     completed_steps = completed_steps or []
     prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history, session_note, language)
 
-    raw_text, elapsed = _call_model(prompt)
+    try:
+        raw_text, elapsed = _call_model(prompt)
+    except RateLimited:
+        return {"steps": [{"step": 1, "text": "I'm getting a lot of requests right now. Please wait about 10 seconds and ask again."}],
+                "is_final": True, "was_error": True}
     parsed = extract_json(raw_text)
     print(f"[timing] LLM response took {elapsed:.2f}s (history_turns={len(history or [])}, completed_steps={len(completed_steps)})")
 
@@ -188,7 +207,10 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
         print("[warning] Model did not return steps - retrying without conversation history")
         clean_prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history=None,
                                     session_note=session_note, language=language)
-        raw_text, elapsed = _call_model(clean_prompt)
+        try:
+            raw_text, elapsed = _call_model(clean_prompt)
+        except RateLimited:
+            raw_text, elapsed = "", 0
         parsed = extract_json(raw_text)
         print(f"[timing] Retry took {elapsed:.2f}s")
 

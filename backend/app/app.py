@@ -11,7 +11,6 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
 from app.models import (
     TextInput,
     RedactOutput,
@@ -24,8 +23,9 @@ from app.models import (
     CameraConfig, CameraStatusResponse,
     DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse, NearbyRequest
 )
-
+# pyrefly: ignore [missing-import]
 from app.redact import redact_text
+# pyrefly: ignore [missing-import]
 from app.llm import decompose_task
 from visual.vision import detect_objects_summary
 from visual.caption import answer_about_image
@@ -43,6 +43,7 @@ from app.sync import router as sync_router
 
 app = FastAPI(title="Smart Companion API")
 
+# the page checks /camera/status every few seconds; keep those lines out of the console
 import logging
 class _HideCameraStatus(logging.Filter):
     def filter(self, record):
@@ -53,7 +54,7 @@ init_db()
 app.include_router(directory_router)
 app.include_router(sync_router)
 
-CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.31.195:8080/video")
+CAMERA_URL = os.getenv("CAMERA_URL", "")   # empty = no camera until the user sets one in the app
 camera = IPCameraStream(CAMERA_URL)
 camera.start()
 
