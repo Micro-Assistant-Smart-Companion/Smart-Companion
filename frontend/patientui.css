@@ -659,3 +659,34 @@ html, body {
   .pf-quick-row { flex-wrap: wrap; }
   .pf-quick-row .pf-btn { width: 100%; }
 }
+
+
+
+/* ==========================================================================
+   14. SOFT GRADIENT BACKGROUND (main area)
+   Slow, gentle colour glow. Stays behind the content, so text contrast is unchanged.
+   ========================================================================== */
+.main-workspace {
+  position: relative;
+  background-color: var(--bg-base, #0b0d13);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 10%, rgba(124, 92, 255, .20), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 90% 20%, rgba(34, 211, 238, .12), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 70% 100%, rgba(244, 114, 182, .10), transparent 70%);
+  background-size: 140% 140%, 140% 140%, 140% 140%;
+  background-repeat: no-repeat;
+  animation: pfBgDrift 28s ease-in-out infinite alternate;
+}
+[data-theme="light"] .main-workspace {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 10%, rgba(124, 92, 255, .14), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 90% 20%, rgba(34, 211, 238, .12), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 70% 100%, rgba(244, 114, 182, .10), transparent 70%);
+}
+@keyframes pfBgDrift {
+  0%   { background-position: 0% 0%, 100% 0%, 60% 100%; }
+  100% { background-position: 25% 20%, 75% 25%, 40% 85%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main-workspace { animation: none; }
+}
