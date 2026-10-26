@@ -193,7 +193,7 @@ function rmQuickLog(kind, onSave) {
 //  The check-in that appears when the app opens
 // =====================================================================
 function rmCheckin(force) {
-  if (document.getElementById('rmCheckin') || document.getElementById('wcOverlay')) return false;
+  if (document.getElementById('rmCheckin') || document.getElementById('wcOverlay') || document.getElementById('accOverlay')) return false;
   const pending = rmPending(), askGlu = rmHabit('glucose'), askBp = rmHabit('bp'), insights = rmInsights();
   if (!force && !pending.length && !askGlu && !askBp && !insights.length) return false;
 
@@ -267,7 +267,7 @@ function rmNotify(slot, items) {
   } catch (e) {}
 }
 function rmTick() {
-  if (document.getElementById('rmCheckin') || document.getElementById('pfSplash') || document.getElementById('wcOverlay')) return;
+  if (document.getElementById('rmCheckin') || document.getElementById('pfSplash') || document.getElementById('wcOverlay') || document.getElementById('accOverlay')) return;
   const now = Date.now(), p = rmPrefs();
   RM_SLOTS.forEach(slot => {
     const items = rmToday().filter(x => x.slot === slot && !x.status && x.dueMs <= now && now < x.dueMs + 120 * 60000);

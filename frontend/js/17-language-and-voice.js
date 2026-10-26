@@ -1,5 +1,4 @@
 // English / Hindi / Bengali picker and read-aloud voice
-// Replies, speech-to-text AND read-aloud all follow the language picked in the little dropdown by the mic.
 
 const LANGS = {
   en: { label: 'English', bcp: 'en-US', whisper: 'en' },
@@ -45,8 +44,9 @@ function currentLang() { const code = currentLangCode(); return { code, ...LANGS
 
 // ---- Read aloud: pick the voice from the SCRIPT of the text itself ----
 function detectScript(text) {
-  if (/[ऀ-ॿ]/.test(text)) return 'hi';
-  if (/[ঀ-৿]/.test(text)) return 'bn';
+  // the danda sign (U+0964, "।") is shared by both scripts, so only look at real letters and digits
+  if (/[\u0900-\u0963\u0966-\u097F]/.test(text)) return 'hi';
+  if (/[\u0980-\u09FF]/.test(text)) return 'bn';
   return 'en';
 }
 
@@ -60,7 +60,7 @@ let _serverAudio = null;
 function stopServerAudio() {
   if (_serverAudio) { try { _serverAudio.pause(); } catch (e) {} _serverAudio = null; }
 }
-// the app already calls speechSynthesis.cancel() when you stop/close - make that stop server audio too
+
 if (window.speechSynthesis) {
   const _cancel = window.speechSynthesis.cancel.bind(window.speechSynthesis);
   window.speechSynthesis.cancel = () => { stopServerAudio(); _cancel(); };
@@ -82,7 +82,6 @@ async function serverSpeak(text, code) {
   }
 }
 
-// Same name as the old function on purpose: this later declaration replaces it everywhere it is called.
 function speak(text) {
   if (!text || !text.trim()) return;
   const code = detectScript(text);
