@@ -36,22 +36,22 @@ const vhT = () => VH_T[(typeof currentLangCode === 'function' && currentLangCode
 
 // ---------- reading the sentence ----------
 function vhDigits(s) {          // Hindi and Bengali digits to 0-9
-  return String(s).replace(/[०-९]/g, d => '०१२३४५६७८९'.indexOf(d)).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  return String(s).normalize('NFC').replace(/\u093C/g, '').replace(/[०-९]/g, d => '०१२३४५६७८९'.indexOf(d)).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
 }
 const VH_QUESTION = /\?|^(what|why|how|when|should|can|could|is|are|do|does|will)\b|^(क्या|क्यों|कैसे|कब|কি|কী|কেন|কীভাবে|কখন)(\s|$)/i;
 const VH_KEY = {
   bp:     /\b(bp|blood pressure)\b|बीपी|ब्लड प्रेशर|रक्तचाप|বিপি|ব্লাড প্রেশার|প্রেশার/i,
   sugar:  /\b(sugar|glucose)\b|शुगर|ग्लूकोज|ग्लूकोस|সুগার|গ্লুকোজ/i,
   temp:   /\b(temperature|temp|fever)\b|तापमान|बुखार|তাপমাত্রা|জ্বর/i,
-  weight: /\bweight\b|वज़न|वजन|ওজন/i,
-  pulse:  /\b(pulse|heart rate|heartbeat)\b|नाड़ी|पल्स|दिल की धड़कन|পালস|নাড়ি|হার্টবিট/i,
+  weight: /\bweight\b|वजन|वजन|ওজন/i,
+  pulse:  /\b(pulse|heart rate|heartbeat)\b|नाडी|पल्स|दिल की धडकन|পালস|নাড়ি|হার্টবিট/i,
   spo2:   /\b(oxygen|spo2|saturation)\b|ऑक्सीजन|অক্সিজেন/i
 };
 const VH_SYMPTOM = /^(symptom|symptoms|note)\b[\s:,-]*(.+)$|^(लक्षण|नोट)\b[\s:,-]*(.+)$|^(উপসর্গ|নোট)\b[\s:,-]*(.+)$/i;
 const VH_TOOK = /\b(took|taken|had|ate|swallowed)\b.*\b(medicine|medicines|medication|tablet|tablets|pill|pills|dose|dosage)\b|\b(took|taken)\b\s+(my\s+)?\w+|(दवा|दवाई|गोली).*(ले ली|खा ली|खा लिया|ले लिया)|(ওষুধ).*(খেয়েছি|খেয়ে নিয়েছি|খেয়ে নিলাম)/i;
 const VH_NOT = /\b(not|didn't|did not|haven't|have not|forgot|missed)\b|नहीं|ভুলে|খাইনি|নাই/i;
 const VH_UNDO = /^(undo|remove that|delete that|cancel that|वापस|हटाओ|हटा दो|पूर्ववत|মুছে ফেলো|মুছে দাও|বাতিল)$/i;
-const VH_READ = /(read|tell).*(my )?(readings?|health log|log)|my (last|latest) (reading|readings|bp|sugar)|मेरी (ताज़ा |आखिरी )?रीडिंग|आखिरी रीडिंग|আমার (সর্বশেষ |শেষ )?রিডিং|শেষ রিডিং/i;
+const VH_READ = /(read|tell).*(my )?(readings?|health log|log)|my (last|latest) (reading|readings|bp|sugar)|मेरी (ताजा |आखिरी )?रीडिंग|आखिरी रीडिंग|আমার (সর্বশেষ |শেষ )?রিডিং|শেষ রিডিং/i;
 
 function vhNums(s) { return (vhDigits(s).match(/\d+(?:\.\d+)?/g) || []).map(Number); }
 const vhIn = (v, a, b) => v >= a && v <= b;

@@ -1,4 +1,6 @@
-const VF_KEY = 'companion_voicefirst';        // device-only on/off, not part of backup or sync
+// Voice-first mode and screen-reader support (English / Hindi / Bengali)
+
+const VF_KEY = 'companion_voicefirst';        
 
 const VF_T = {
   en: {
@@ -54,7 +56,7 @@ try { vfOn = localStorage.getItem(VF_KEY) === '1'; } catch (e) {}
 
 function vfT() { return VF_T[(typeof currentLangCode === 'function' && currentLangCode()) || 'en'] || VF_T.en; }
 function vfNorm(t) {
-  return String(t || '').toLowerCase().replace(/[.,!?;:।'"“”‘’()\-]/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(t || '').normalize('NFC').replace(/\u093C/g, '').toLowerCase().replace(/[.,!?;:।'"“”‘’()\-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 function vfIsSpeaking() {
   const synth = window.speechSynthesis;

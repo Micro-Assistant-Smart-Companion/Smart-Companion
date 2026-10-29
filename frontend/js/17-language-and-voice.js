@@ -1,7 +1,5 @@
-// English / Hindi / Bengali picker and read-aloud voice
-
 const LANGS = {
-  en: { label: 'English', bcp: 'en-US', whisper: 'en' },
+  en: { label: 'English', bcp: 'en-IN', whisper: 'en' },     // Indian English: for the voice that reads aloud and for live captions
   hi: { label: 'हिन्दी',   bcp: 'hi-IN', whisper: 'hi' },
   bn: { label: 'বাংলা',    bcp: 'bn-IN', whisper: 'bn' },
 };
@@ -17,6 +15,11 @@ function setLangCode(code) {
   if (!LANGS[code]) return;
   try { localStorage.setItem(LANG_KEY, code); } catch (e) {}
   const sel = document.getElementById('langPicker'); if (sel) sel.value = code;
+}
+// how fast the assistant speaks (1 = normal). Default a little faster; the person can say "speak faster" or "speak slower".
+function speechRate() {
+  try { const r = parseFloat(localStorage.getItem('companion_speech_rate')); if (r >= 0.6 && r <= 2.2) return r; } catch (e) {}
+  return 1.15;
 }
 function currentLang() { const code = currentLangCode(); return { code, ...LANGS[code] }; }
 
@@ -51,7 +54,10 @@ function detectScript(text) {
 }
 
 function voiceFor(code) {
-  if (code === 'en') return pickFemaleVoice();
+  if (code === 'en') {
+    const inV = cachedVoices.filter(v => /^en[-_]in$/i.test(v.lang));      // an Indian English voice if the device has one
+    return inV.find(v => /female|neerja|heera|natural|neural|google/i.test(v.name)) || inV[0] || pickFemaleVoice();
+  }
   const list = cachedVoices.filter(v => v.lang.replace('_', '-').toLowerCase().startsWith(code));
   return list.find(v => /female|google|natural|neural/i.test(v.name)) || list[0] || null;
 }
@@ -60,7 +66,7 @@ let _serverAudio = null;
 function stopServerAudio() {
   if (_serverAudio) { try { _serverAudio.pause(); } catch (e) {} _serverAudio = null; }
 }
-
+// the app already calls speechSynthesis.cancel() when you stop/close - make that stop server audio too
 if (window.speechSynthesis) {
   const _cancel = window.speechSynthesis.cancel.bind(window.speechSynthesis);
   window.speechSynthesis.cancel = () => { stopServerAudio(); _cancel(); };
@@ -75,6 +81,7 @@ async function serverSpeak(text, code) {
     if (!res.ok) throw new Error('tts');
     const url = URL.createObjectURL(await res.blob());
     _serverAudio = new Audio(url);
+    _serverAudio.playbackRate = Math.min(speechRate(), 2);
     _serverAudio.onended = () => URL.revokeObjectURL(url);
     await _serverAudio.play();
   } catch (e) {
@@ -82,6 +89,7 @@ async function serverSpeak(text, code) {
   }
 }
 
+// Same name as the old function on purpose: this later declaration replaces it everywhere it is called.
 function speak(text) {
   if (!text || !text.trim()) return;
   const code = detectScript(text);
@@ -90,7 +98,7 @@ function speak(text) {
   if (code !== 'en' && !voice) { serverSpeak(text, code); return; }   // no local Hindi/Bengali voice -> server fallback
   if (!window.speechSynthesis) return;
   const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 1.0;
+  utter.rate = speechRate();
   if (voice) { utter.voice = voice; utter.lang = voice.lang; } else { utter.lang = LANGS[code].bcp; }
   window.speechSynthesis.speak(utter);
 }

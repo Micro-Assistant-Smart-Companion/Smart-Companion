@@ -116,13 +116,12 @@ async function finishMic(s) {
   const formData = new FormData();
   formData.append('file', blob, 'recording.webm');
   formData.append('language', currentLangCode());
+  formData.append('vocab', sttVocab());
   try {
     const res = await fetch(`${API}/transcribe`, { method: 'POST', body: formData });
     if (!res.ok) throw new Error('transcribe failed');
     const data = await res.json();
     setStatus('');
-    // follow the language that was really spoken (the dropdown, replies and read-aloud switch with it)
-    if (data.language && data.language !== currentLangCode() && typeof setLangCode === 'function') setLangCode(data.language);
     if (data.text && data.text.trim()) {
       unlockBadge('voice', 'Voice Explorer');
       if (goalEl) { goalEl.value = ''; goalEl.style.height = 'auto'; }
@@ -169,4 +168,9 @@ function speak(text) {
   const female = pickFemaleVoice();
   if (female) utter.voice = female;
   window.speechSynthesis.speak(utter);
+}
+
+// the person's own medicine names, sent with the audio so Whisper spells them right (names only, no doses or readings)
+function sttVocab() {
+  try { return hlMeds().filter(m => m.active).map(m => m.name).slice(0, 15).join(', '); } catch (e) { return ''; }
 }

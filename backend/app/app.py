@@ -11,6 +11,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from app.models import (
     TextInput,
     RedactOutput,
@@ -107,11 +108,11 @@ def decompose(req: TaskRequest):
 
 
 @app.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe(file: UploadFile = File(...), language: str = Form(default="en")):
+async def transcribe(file: UploadFile = File(...), language: str = Form(default="en"), auto: str = Form(default="0"), vocab: str = Form(default="")):
     audio_bytes = await file.read()
-    # `language` is only a hint: Whisper detects what was really spoken and we return it
+    # the language picked in the app is used as it is (send auto=1 to let Whisper detect it instead)
     return transcribe_detect(audio_bytes, filename=file.filename,
-                             content_type=file.content_type, hint=language)
+                             content_type=file.content_type, hint=language, auto=(auto == "1"), vocab=vocab)
 
 
 class TTSInput(BaseModel):
