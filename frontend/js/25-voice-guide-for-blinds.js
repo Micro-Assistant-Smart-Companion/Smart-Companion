@@ -1,10 +1,11 @@
-// Guided voice setup: medicines, conditions, how I feel, emergency card, doctor report (English / Hindi / Bengali)
 
 const VG_T = {
   en: {
     again: 'I did not hear you.', timeout: 'Okay, I will stop here. Nothing was saved. Say the command again whenever you like.',
     cancelled: 'Okay, cancelled. Nothing was saved.', yn: 'Please say yes or no.', right: 'Is that right? Say yes or no.', heard: 'I heard',
     skipHint: 'Or say skip.', no: 'no', skip: 'skip',
+    orSpell: 'You can also say spell.', didYouMean: 'Did you mean', yns: 'Say yes, no, or spell.', spellIt: 'Please spell it, one letter at a time, for example M E T F O R M I N.',
+    spellBad: 'I could not read the letters. Please spell it again, slowly.', spelledAs: 'spelled',
     medName: 'Which medicine do you want to add? Say its name.', medDose: 'What is the dose, for example 500 milligram? Or say skip.',
     medFreq: 'How often do you take it? For example once a day in the morning, once a day at night, twice a day, three times a day, or only when needed.',
     medDur: 'For how many days? For example 5 days, or say always.', medDup: 'is already in your list.',
@@ -31,6 +32,8 @@ const VG_T = {
     again: 'मैंने सुना नहीं।', timeout: 'ठीक है, मैं यहीं रुकता हूँ। कुछ सेव नहीं हुआ। जब चाहें दोबारा कमांड बोलिए।',
     cancelled: 'ठीक है, रद्द किया। कुछ सेव नहीं हुआ।', yn: 'कृपया हाँ या नहीं बोलिए।', right: 'क्या यह सही है? हाँ या नहीं बोलिए।', heard: 'मैंने सुना',
     skipHint: 'या छोड़ो बोलिए।', no: 'नहीं', skip: 'छोड़ो',
+    orSpell: 'या स्पेलिंग बोलिए।', didYouMean: 'क्या आपका मतलब है', yns: 'हाँ, नहीं, या स्पेलिंग बोलिए।', spellIt: 'कृपया उसकी स्पेलिंग एक-एक अक्षर बोलकर बताइए, जैसे एम ई टी एफ ओ आर एम आई एन।',
+    spellBad: 'मैं अक्षर समझ नहीं पाया। कृपया धीरे-धीरे फिर से बोलिए।', spelledAs: 'स्पेलिंग',
     medName: 'कौन सी दवा जोड़नी है? उसका नाम बोलिए।', medDose: 'खुराक कितनी है, जैसे 500 मिलीग्राम? या छोड़ो बोलिए।',
     medFreq: 'यह कितनी बार लेनी है? जैसे सुबह एक बार, रात को एक बार, दिन में दो बार, दिन में तीन बार, या ज़रूरत पड़ने पर।',
     medDur: 'कितने दिनों के लिए? जैसे 5 दिन, या हमेशा बोलिए।', medDup: 'पहले से आपकी सूची में है।',
@@ -57,6 +60,8 @@ const VG_T = {
     again: 'আমি শুনতে পাইনি।', timeout: 'ঠিক আছে, এখানেই থামছি। কিছু সেভ হয়নি। যখন ইচ্ছা আবার কমান্ড বলুন।',
     cancelled: 'ঠিক আছে, বাতিল করলাম। কিছু সেভ হয়নি।', yn: 'অনুগ্রহ করে হ্যাঁ বা না বলুন।', right: 'এটা কি ঠিক? হ্যাঁ বা না বলুন।', heard: 'আমি শুনেছি',
     skipHint: 'অথবা বাদ দিন বলুন।', no: 'না', skip: 'বাদ দিন',
+    orSpell: 'অথবা স্পেলিং বলুন।', didYouMean: 'আপনি কি বোঝাতে চেয়েছেন', yns: 'হ্যাঁ, না, বা স্পেলিং বলুন।', spellIt: 'অনুগ্রহ করে এক এক করে অক্ষর বলুন, যেমন এম ই টি এফ ও আর এম আই এন।',
+    spellBad: 'আমি অক্ষরগুলো বুঝতে পারিনি। অনুগ্রহ করে ধীরে ধীরে আবার বলুন।', spelledAs: 'বানান',
     medName: 'কোন ওষুধটি যোগ করবেন? তার নাম বলুন।', medDose: 'ডোজ কত, যেমন ৫০০ মিলিগ্রাম? অথবা বাদ দিন বলুন।',
     medFreq: 'কতবার খেতে হবে? যেমন সকালে একবার, রাতে একবার, দিনে দুইবার, দিনে তিনবার, বা দরকার হলে।',
     medDur: 'কত দিনের জন্য? যেমন ৫ দিন, বা সবসময় বলুন।', medDup: 'আগে থেকেই আপনার তালিকায় আছে।',
@@ -87,10 +92,10 @@ const VG_NO = ['no', 'nope', 'wrong', 'not right', 'nahi', 'नहीं', 'न�
 const VG_SKIP = ['skip', 'none', 'nothing', 'no', 'pass', 'छोड़ो', 'छोड़ दो', 'छोड़िए', 'कुछ नहीं', 'नहीं', 'বাদ দিন', 'বাদ', 'কিছু না', 'না'];
 const vgIs = (list, t) => list.some(w => vfNorm(w) === t);
 const vgYesNo = (t) => { const n = vfNorm(t); return vgIs(VG_YES, n) ? true : vgIs(VG_NO, n) ? false : null; };
-
-
+ 
+// ---------- the question engine ----------
 let vgSt = null, vgBusy = false;
-
+ 
 function vgPrompt(again) {
   const st = vgSt; if (!st) return;
   clearTimeout(st.timer);
@@ -107,7 +112,8 @@ function vgAsk(prompt) {
   return new Promise(res => { vgSt = { res, prompt, tries: 0, timer: null }; vgPrompt(false); });
 }
 function vgCancel(msg) {
-  const st = vgSt; if (!st) return;
+  const st = vgSt;
+  if (!st) { if (msg) vfSay(msg); return; }        // the last answer was already taken: just say it
   clearTimeout(st.timer); vgSt = null; st.res(null);
   if (msg) vfSay(msg);
 }
@@ -124,6 +130,7 @@ async function vgText(prompt, optional) {
   if (optional && vgIs(VG_SKIP, vfNorm(v))) return '';
   return v.replace(/[.।]+$/, '').slice(0, 80);
 }
+// read it back, wait for yes / no; true / false / null (cancelled)
 async function vgConfirm(prompt) {
   for (let i = 0; i < 2; i++) {
     const v = await vgAsk(i ? vgT().yn : prompt);
@@ -132,17 +139,182 @@ async function vgConfirm(prompt) {
   }
   vgCancel(vgT().cancelled); return null;
 }
-// a name that must be right: ask, repeat it back, ask again if wrong
-async function vgName(prompt) {
+// ---------- spelling ----------
+const VG_LNAMES = {
+  a: ['ay', 'ey', 'ए', 'এ'], b: ['bee', 'be', 'बी', 'বি'], c: ['see', 'sea', 'cee', 'सी', 'সি'], d: ['dee', 'डी', 'ডি'], e: ['ee', 'ई', 'ই'],
+  f: ['ef', 'eff', 'एफ', 'এফ'], g: ['gee', 'jee', 'जी', 'জি'], h: ['aitch', 'haitch', 'एच', 'এইচ'], i: ['eye', 'aye', 'आई', 'আই'], j: ['jay', 'जे', 'জে'],
+  k: ['kay', 'के', 'কে'], l: ['el', 'ell', 'एल', 'এল'], m: ['em', 'एम', 'এম'], n: ['en', 'एन', 'এন'], o: ['oh', 'ओ', 'ও'], p: ['pee', 'पी', 'পি'],
+  q: ['queue', 'cue', 'kew', 'क्यू', 'কিউ'], r: ['ar', 'are', 'आर', 'আর'], s: ['ess', 'es', 'एस', 'এস'], t: ['tee', 'tea', 'टी', 'টি'],
+  u: ['you', 'यू', 'ইউ'], v: ['vee', 'वी', 'ভি'], w: ['doubleu', 'डब्ल्यू', 'ডাব্লিউ', 'ডাবলিউ'], x: ['ex', 'एक्स', 'এক্স'], y: ['why', 'वाई', 'ওয়াই'], z: ['zed', 'zee', 'ज़ेड', 'জেড']
+};
+const VG_LMAP = {};
+Object.keys(VG_LNAMES).forEach(L => { VG_LMAP[L] = L; VG_LNAMES[L].forEach(n => { VG_LMAP[vfNorm(n)] = L; }); });
+const VG_DOUBLE = ['double', 'डबल', 'ডাবল'];
+const VG_SPELLWORDS = ['spell', 'spelling', 'let me spell', 'i will spell', 'स्पेलिंग', 'स्पेल', 'স্পেলিং', 'বানান', 'বানান করি'];
+const vgIsSpell = t => { const n = vfNorm(t); return n.split(' ').length <= 4 && VG_SPELLWORDS.some(w => n === vfNorm(w) || n.includes(vfNorm(w))); };
+// "M E T F O R M I N", "em ee tee ef oh ar em eye en", "double m" ... -> "Metformin" (null if it does not look like spelling)
+function vgSpelled(t) {
+  const tok = vfNorm(vhDigits(t)).split(' ').filter(Boolean);
+  if (!tok.length) return null;
+  if (tok.length === 1) return /^[a-z0-9]{3,30}$/i.test(tok[0]) ? tok[0][0].toUpperCase() + tok[0].slice(1).toLowerCase() : null;
+  let out = '', hit = 0, dbl = false;
+  for (let i = 0; i < tok.length; i++) {
+    const w = tok[i];
+    if (VG_DOUBLE.map(vfNorm).includes(w)) {
+      if (tok[i + 1] === 'u' || tok[i + 1] === 'you') { out += 'w'; hit += 2; i++; continue; }      // "double u" is the letter W
+      dbl = true; hit++; continue;
+    }
+    const L = VG_LMAP[w] || (/^[a-z]$/.test(w) ? w : /^\d{1,2}$/.test(w) ? w : null);
+    if (L) { out += dbl ? L + L : L; hit++; }
+    dbl = false;
+  }
+  if (out.length < 2 || hit / tok.length < 0.7) return null;
+  return out[0].toUpperCase() + out.slice(1).toLowerCase();
+}
+const vgLetters = w => w.toUpperCase().split('').join(' ');
+async function vgSpell() {
   const T = vgT();
-  for (let i = 0; i < 3; i++) {
-    const v = await vgText(prompt, false); if (v === null) return null;
-    const ok = await vgConfirm(`${T.heard} ${v}. ${T.right}`); if (ok === null) return null;
-    if (ok) return v;
+  for (let i = 0; i < 2; i++) {
+    const v = await vgAsk(i ? T.spellBad : T.spellIt); if (v === null) return null;
+    const w = vgSpelled(v); if (w) return w;
   }
   vgCancel(T.cancelled); return null;
 }
+// yes / no / spell
+async function vgChoice(prompt) {
+  for (let i = 0; i < 2; i++) {
+    const v = await vgAsk(i ? vgT().yns : prompt); if (v === null) return null;
+    if (vgIsSpell(v)) return 'spell';
+    const yn = vgYesNo(v); if (yn !== null) return yn ? 'yes' : 'no';
+  }
+  vgCancel(vgT().cancelled); return null;
+}
+// common medicine names, only used to SUGGEST a correction ("Did you mean Metformin?"). The person must say yes.
+const VG_MEDS = ['Paracetamol', 'Metformin', 'Amlodipine', 'Atenolol', 'Losartan', 'Telmisartan', 'Atorvastatin', 'Rosuvastatin', 'Aspirin', 'Clopidogrel',
+  'Pantoprazole', 'Omeprazole', 'Levothyroxine', 'Glimepiride', 'Gliclazide', 'Insulin', 'Cetirizine', 'Azithromycin', 'Amoxicillin', 'Ibuprofen',
+  'Montelukast', 'Salbutamol', 'Metoprolol', 'Enalapril', 'Ramipril', 'Furosemide', 'Sitagliptin', 'Vildagliptin', 'Dolo', 'Crocin', 'Diclofenac',
+  'Domperidone', 'Ranitidine', 'Ondansetron', 'Loratadine', 'Prednisolone', 'Warfarin', 'Digoxin', 'Spironolactone', 'Hydrochlorothiazide', 'Sumatriptan',
+  'Propranolol', 'Topiramate', 'Naproxen', 'Cefixime', 'Ciprofloxacin', 'Doxycycline', 'Folic acid', 'Vitamin D', 'Calcium'];
+function vgDist(a, b) {
+  const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function vgSuggest(name) {
+  const x = String(name).toLowerCase().replace(/[^a-z]/g, '');
+  if (x.length < 4) return null;
+  const pool = [...hlMeds().map(m => m.name), ...VG_MEDS];
+  let best = null, bd = 99;
+  pool.forEach(p => {
+    const y = p.toLowerCase().replace(/[^a-z]/g, ''), d = vgDist(x, y);
+    if (d < bd && d <= 3 && 1 - d / Math.max(x.length, y.length) >= 0.72) { bd = d; best = p; }
+  });
+  return best && best.toLowerCase().replace(/[^a-z]/g, '') !== x ? best : null;
+}
 
+const VG_N = {
+  en: { say: 'I could not get the name right. A box is open. Type the medicine name, or upload a photo of the strip or prescription. Or say spell.',
+    title: 'Medicine name', label: 'Type the medicine name', save: 'Save this name', photo: 'Upload a photo of the strip or prescription', spell: 'Spell it by voice', cancel: 'Cancel',
+    reading: 'Reading the photo. Please wait.', pick: 'I found these names. Choose the right one.', none: 'I could not find a medicine name in that photo. Please type it.', fail: 'I could not read the photo. Please type the name.', tooShort: 'Please type the full name.' },
+  hi: { say: 'मैं नाम सही नहीं समझ पाया। एक बॉक्स खुला है। दवा का नाम टाइप कीजिए, या पट्टी या पर्चे की फ़ोटो अपलोड कीजिए। या स्पेलिंग बोलिए।',
+    title: 'दवा का नाम', label: 'दवा का नाम टाइप करें', save: 'यह नाम सेव करें', photo: 'पट्टी या पर्चे की फ़ोटो अपलोड करें', spell: 'आवाज़ से स्पेलिंग बोलें', cancel: 'रद्द करें',
+    reading: 'फ़ोटो पढ़ रहा हूँ। कृपया रुकिए।', pick: 'मुझे ये नाम मिले। सही वाला चुनिए।', none: 'उस फ़ोटो में मुझे दवा का नाम नहीं मिला। कृपया टाइप कीजिए।', fail: 'मैं फ़ोटो नहीं पढ़ सका। कृपया नाम टाइप कीजिए।', tooShort: 'कृपया पूरा नाम टाइप कीजिए।' },
+  bn: { say: 'আমি নামটি ঠিক বুঝতে পারিনি। একটি বক্স খুলেছে। ওষুধের নাম টাইপ করুন, অথবা পাতা বা প্রেসক্রিপশনের ছবি আপলোড করুন। অথবা স্পেলিং বলুন।',
+    title: 'ওষুধের নাম', label: 'ওষুধের নাম টাইপ করুন', save: 'এই নামটি সেভ করুন', photo: 'পাতা বা প্রেসক্রিপশনের ছবি আপলোড করুন', spell: 'মুখে বানান বলুন', cancel: 'বাতিল',
+    reading: 'ছবি পড়ছি। অনুগ্রহ করে অপেক্ষা করুন।', pick: 'আমি এই নামগুলো পেয়েছি। ঠিকটি বেছে নিন।', none: 'ওই ছবিতে ওষুধের নাম পাইনি। অনুগ্রহ করে টাইপ করুন।', fail: 'ছবিটি পড়তে পারিনি। অনুগ্রহ করে নাম টাইপ করুন।', tooShort: 'অনুগ্রহ করে পুরো নাম টাইপ করুন।' }
+};
+let vgNameSrc = 'voice';            // how the last medicine name was entered: voice / spelled / typed / photo
+// resolves {name, src}, 'spell', or null (cancelled). While it is open, only "spell" and "stop" are taken from voice,
+// so keyboard noise or a stray word can never become a medicine name.
+function vgNameBox() {
+  const N = VG_N[(typeof currentLangCode === 'function' && currentLangCode()) || 'en'] || VG_N.en, T = vgT();
+  return new Promise(res => {
+    const o = document.createElement('div'); o.id = 'vgNameOverlay'; o.className = 'pf-acc-overlay';
+    o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-labelledby', 'vgnT');
+    o.innerHTML = `<div class="pf-welcome-box">
+      <h2 class="pf-welcome-title" id="vgnT">${N.title}</h2>
+      <label for="vgnIn" style="display:block;font-weight:600;margin:0 0 6px">${N.label}</label>
+      <input id="vgnIn" type="text" maxlength="80" autocomplete="off" autocapitalize="words" spellcheck="false" style="width:100%;min-height:52px;font:inherit;font-size:18px;padding:0 14px;border-radius:12px;border:1.5px solid var(--border-medium);background:transparent;color:var(--text-primary);margin:0 0 10px">
+      <button type="button" class="pf-acc-hear" id="vgnSave">${N.save}</button>
+      <button type="button" class="pf-acc-hear" id="vgnPhoto">${N.photo}</button>
+      <button type="button" class="pf-acc-hear" id="vgnSpell">${N.spell}</button>
+      <button type="button" class="pf-acc-hear" id="vgnCancel">${N.cancel}</button>
+      <input type="file" id="vgnFile" accept="image/*,application/pdf" hidden>
+      <div id="vgnList" role="group" aria-label="${N.pick}"></div>
+      <p id="vgnMsg" role="status" aria-live="polite" style="min-height:1.4em;margin:8px 0 0"></p></div>`;
+    document.body.appendChild(o);
+    const $ = id => o.querySelector('#' + id), msg = t => { $('vgnMsg').textContent = t; };
+    let over = false;
+    const st = { prompt: '', tries: 0, timer: null, res: v => {
+      if (over) return;
+      if (v === null) return done(null);
+      if (vgIsSpell(v)) return done('spell');
+      vgSt = st;                                    // anything else heard is ignored; the box stays open
+    } };
+    const done = r => { over = true; vgSt = null; o.remove(); res(r); };
+    vgSt = st;
+    $('vgnSave').onclick = () => {
+      const n = $('vgnIn').value.replace(/\s+/g, ' ').trim();
+      if (n.length < 2) { msg(N.tooShort); vfSay(N.tooShort); $('vgnIn').focus(); return; }
+      done({ name: n[0].toUpperCase() + n.slice(1), src: 'typed' });
+    };
+    $('vgnIn').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('vgnSave').click(); } };
+    o.onkeydown = e => { if (e.key === 'Escape') { vgCancel(T.cancelled); } };
+    $('vgnSpell').onclick = () => done('spell');
+    $('vgnCancel').onclick = () => vgCancel(T.cancelled);
+    $('vgnPhoto').onclick = () => $('vgnFile').click();
+    $('vgnFile').onchange = async ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      msg(N.reading); vfSay(N.reading);
+      try {
+        const fd = new FormData(); fd.append('file', f, f.name);
+        const r = await fetch(`${API}/extract-prescription`, { method: 'POST', body: fd });
+        const d = r.ok ? await r.json() : null;
+        const names = d && d.ok ? [...new Set((d.medicines || []).map(m => m.name).filter(Boolean))] : [];
+        if (over) return;
+        if (!names.length) { msg(N.none); vfSay(N.none); $('vgnIn').focus(); return; }
+        if (names.length === 1) return done({ name: names[0], src: 'photo' });
+        const box = $('vgnList'); box.innerHTML = '';
+        names.forEach(n => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pf-acc-hear'; b.textContent = n; b.onclick = () => done({ name: n, src: 'photo' }); box.appendChild(b); });
+        msg(N.pick); vfSay(`${N.pick} ${names.join(', ')}`); box.firstChild.focus();
+      } catch (e) { if (!over) { msg(N.fail); vfSay(N.fail); $('vgnIn').focus(); } }
+    };
+    $('vgnIn').focus();
+    vfSay(N.say, vfListen);
+  });
+}
+
+async function vgName(prompt, isMedicine) {
+  const T = vgT(); let src = 'voice', fromPhoto = false;
+  vgNameSrc = 'voice';
+  let v = await vgText(`${prompt} ${T.orSpell}`, false); if (v === null) return null;
+  for (let round = 0; round < 4; round++) {
+    if (vgIsSpell(v)) { v = await vgSpell(); if (v === null) return null; src = 'spelled'; }
+    else if (isMedicine && !fromPhoto) {
+      const sug = vgSuggest(v);
+      if (sug) {
+        const c = await vgChoice(`${T.heard} ${v}. ${T.didYouMean} ${sug}? ${T.yns}`); if (c === null) return null;
+        if (c === 'yes') { vgNameSrc = src; return sug; }
+        v = await vgSpell(); if (v === null) return null; src = 'spelled';
+      }
+    }
+    const said = isMedicine ? `${v}, ${T.spelledAs} ${vgLetters(v)}` : v;
+    const c = await vgChoice(`${T.heard} ${said}. ${T.right} ${T.yns}`); if (c === null) return null;
+    if (c === 'yes') { vgNameSrc = src; return v; }
+    fromPhoto = false;
+    if (isMedicine && c === 'no') {
+      const r = await vgNameBox(); if (r === null) return null;
+      if (r === 'spell') { v = await vgSpell(); if (v === null) return null; src = 'spelled'; continue; }
+      if (r.src === 'typed') { vgNameSrc = 'typed'; return r.name; }      
+      v = r.name; src = 'photo'; fromPhoto = true; continue;               
+    }
+    v = await vgSpell(); if (v === null) return null; src = 'spelled';
+  }
+  vgCancel(T.cancelled); return null;
+}
+ 
+// ---------- parsers (they read Hindi and Bengali too) ----------
 const VG_NUMW = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fourteen: 14,
   'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पाँच': 5, 'पांच': 5, 'छह': 6, 'छः': 6, 'सात': 7, 'आठ': 8, 'नौ': 9, 'दस': 10, 'चौदह': 14,
   'এক': 1, 'দুই': 2, 'তিন': 3, 'চার': 4, 'পাঁচ': 5, 'ছয়': 6, 'সাত': 7, 'আট': 8, 'নয়': 9, 'দশ': 10, 'চৌদ্দ': 14 };
@@ -157,7 +329,7 @@ function vgFreq(t) {
   if (/morning|once|daily|every day|सुबह|एक बार|रोज|সকাল|একবার|প্রতিদিন/.test(s)) return 'Once a day, morning';
   return null;
 }
-function vgDuration(t) {            // '' = ongoing, null = not understood
+function vgDuration(t) {          
   const s = vhDigits(String(t)).toLowerCase();
   if (/ongoing|always|long term|lifelong|forever|continue|no end|हमेशा|लगातार|लंबे समय|সবসময়|চলবে|চলমান/.test(s)) return '';
   let n = (s.match(/\d+/) || [])[0];
@@ -172,7 +344,7 @@ function vgBlood(t) {
   const s = ' ' + vhDigits(String(t)).toLowerCase().replace(/[.,]/g, ' ').replace(/([+\-])/g, ' $1 ').replace(/\s+/g, ' ') + ' ';
   const sign = /negative|minus|-|नेगेटिव|মাইনাস|নেগেটিভ/.test(s) ? '-' : /positive|plus|\+|पॉजिटिव|पोजिटिव|পজিটিভ|প্লাস/.test(s) ? '+' : null;
   if (!sign) return null;
-  const has = w => s.includes(' ' + w + ' ');          // whole words (\b does not work for Hindi or Bengali letters)
+  const has = w => s.includes(' ' + w + ' ');          
   let g = null;
   if (has('ab') || has('a b') || has('ए बी') || has('এ বি')) g = 'AB';
   else if (has('a') || has('ए') || has('এ')) g = 'A';
@@ -182,8 +354,9 @@ function vgBlood(t) {
 }
 const vgAge = t => { const n = parseInt(vhDigits(String(t)).replace(/\D+/g, ' ').trim().split(' ')[0], 10); return n >= 1 && n <= 120 ? String(n) : null; };
 const vgPhone = t => { const d = vhDigits(String(t)).replace(/\D/g, ''); return d.length >= 8 && d.length <= 13 ? d : null; };
-
-
+ 
+ 
+// the saved text stays in English (the reminders read it); this is only for saying it aloud
 const VG_FQ = {
   hi: { 'Once a day, morning': 'दिन में एक बार, सुबह', 'Once a day, night': 'दिन में एक बार, रात को', 'Twice a day': 'दिन में दो बार', 'Three times a day': 'दिन में तीन बार', 'Only when needed': 'ज़रूरत पड़ने पर', '1-0-1': 'सुबह और रात', '1-1-1': 'सुबह, दोपहर और रात', unit: { day: 'दिन', week: 'हफ़्ते', month: 'महीने' } },
   bn: { 'Once a day, morning': 'দিনে একবার, সকালে', 'Once a day, night': 'দিনে একবার, রাতে', 'Twice a day': 'দিনে দুইবার', 'Three times a day': 'দিনে তিনবার', 'Only when needed': 'দরকার হলে', '1-0-1': 'সকাল ও রাত', '1-1-1': 'সকাল, দুপুর ও রাত', unit: { day: 'দিন', week: 'সপ্তাহ', month: 'মাস' } }
@@ -194,10 +367,9 @@ function vgSayDur(d) {
   return m && x ? `${x[1]} ${m.unit[x[2]]}` : d;
 }
 
-// --
 async function vgAddMed() {
   const T = vgT();
-  const name = await vgName(T.medName); if (name === null) return;
+  const name = await vgName(T.medName, true); if (name === null) return;
   if (hlMeds().some(m => m.name.toLowerCase() === name.toLowerCase())) return vfSay(`${name} ${T.medDup}`, vfListen);
   const dose = await vgText(T.medDose, true); if (dose === null) return;
   let freq = null;
@@ -207,7 +379,7 @@ async function vgAddMed() {
   const line = [name, dose, vgSayFreq(freq), dur ? (T.forAfter ? `${vgSayDur(dur)} ${T.for}` : `${T.for} ${vgSayDur(dur)}`) : T.always].filter(x => x !== '' && x != null).join(', ');
   const ok = await vgConfirm(`${line}. ${T.medSave}`); if (!ok) { if (ok === false) vfSay(T.cancelled, vfListen); return; }
   const meds = hlMeds();
-  meds.unshift({ id: Date.now(), name, dose, frequency: freq, duration: dur, notes: '', active: true, source: 'me', addedAt: new Date().toISOString() });
+  meds.unshift({ id: Date.now(), name, dose, frequency: freq, duration: dur, notes: '', active: true, source: 'me', nameSource: vgNameSrc, addedAt: new Date().toISOString() });
   hlSet(HL.meds, meds);
   vhLastSaved = null;
   vfSay(`${T.medSaved} ${line}.`, vfListen);
@@ -223,7 +395,7 @@ async function vgAddCond() {
   hlSet(HL.conds, list);
   vfSay(`${T.cdSaved}: ${name}.`, vfListen);
 }
-
+ 
 // ---------- flow: how I feel today ----------
 function vgFeelWord(t) {
   const s = vhDigits(String(t)).toLowerCase(), T = vgT();
@@ -245,7 +417,8 @@ async function vgFeel(preset) {
     vfSay(`${T.flSaved} ${value}. ${T.flIssueSaved}: ${issue}. ${word === T.unwell ? T.flUnwell : ''}`, vfListen);
   } else vfSay(`${T.flSaved} ${value}. ${word === T.unwell ? T.flUnwell : ''}`, vfListen);
 }
-
+ 
+// ---------- flow: emergency card ----------
 async function vgCard() {
   const T = vgT();
   vfSay(T.ecIntro);
@@ -282,7 +455,8 @@ async function vgCard() {
     vfSay(`${T.ecContactSaved}: ${cname}. ${spoken}. ${T.ecSaved}`, vfListen);
   } else vfSay(`${spoken}. ${T.ecSaved}`, vfListen);
 }
-
+ 
+// ---------- reading things out ----------
 const vgFreqSay = f => vgSayFreq(f || '');
 function vgReadMeds() {
   const T = vgT(), act = hlMeds().filter(m => m.active);
@@ -309,7 +483,8 @@ async function vgDownloadReport() {
   try { await hlMakePdf(90); vfSay(T.pdfDone, vfListen); }
   catch (e) { console.error(e); vfSay(T.pdfFail, vfListen); }
 }
-
+ 
+// ---------- what starts which flow ----------
 const VG_TRIG = [
   ['help', /what can i say|voice help|list of commands|मैं क्या बोल सकत|আমি কী বলতে পারি/],
   ['med', /add (a |new |my )?(medicine|medication|tablet)s?\b|new medicine|दवा जोड|दवाई जोड|नई दवा|ওষুধ যোগ|নতুন ওষুধ/],
@@ -320,7 +495,7 @@ const VG_TRIG = [
   ['rmeds', /(read|tell|list).*(my )?medicines|^my medicines$|मेरी दवाइयाँ|मेरी दवाइयां|मेरी दवाएँ|আমার ওষুধ/],
   ['feel', /(log|record|check).*(how i feel|my feeling|my mood)|^how i feel$|आज कैसा लग|मेरी तबीयत|मुझे कैसा लग|আজ কেমন|আমার শরীর/]
 ];
-function vgFeelInline(low) {            
+function vgFeelInline(low) {            // "I feel tired", "I am feeling dizzy"
   const m = low.match(/^i(?:'m| am)? ?(?:feel|feeling|felt)\s+(.{2,60})$/);
   return m ? m[1] : null;
 }
@@ -336,7 +511,8 @@ function vgStart(text) {
     sum: vgReadSummary, rmeds: vgReadMeds, feel: () => vgFeel(null)
   })[hit[0]];
 }
-
+ 
+// ---------- hook: outermost, so an open question gets the next sentence ----------
 const _vgOrigSend = sendMessage;
 sendMessage = function (text) {
   if (typeof text === 'string' && vgSt) { vgFeed(text); return Promise.resolve(); }
@@ -350,3 +526,4 @@ sendMessage = function (text) {
   }
   return _vgOrigSend.apply(this, arguments);
 };
+ 
