@@ -1,4 +1,3 @@
-
 const VG_T = {
   en: {
     again: 'I did not hear you.', timeout: 'Okay, I will stop here. Nothing was saved. Say the command again whenever you like.',
@@ -86,7 +85,8 @@ const VG_T = {
   }
 };
 const vgT = () => VG_T[(typeof currentLangCode === 'function' && currentLangCode()) || 'en'] || VG_T.en;
-
+ 
+// ---------- spoken words ----------
 const VG_YES = ['yes', 'yeah', 'yep', 'correct', 'right', 'ok', 'okay', 'sure', 'haan', 'han', 'हाँ', 'हां', 'जी', 'जी हाँ', 'ठीक', 'सही', 'হ্যাঁ', 'হ্যা', 'হাঁ', 'ঠিক'];
 const VG_NO = ['no', 'nope', 'wrong', 'not right', 'nahi', 'नहीं', 'नही', 'ग़लत', 'गलत', 'না', 'নাহ', 'ভুল'];
 const VG_SKIP = ['skip', 'none', 'nothing', 'no', 'pass', 'छोड़ो', 'छोड़ दो', 'छोड़िए', 'कुछ नहीं', 'नहीं', 'বাদ দিন', 'বাদ', 'কিছু না', 'না'];
@@ -125,9 +125,11 @@ function vgFeed(text) {
 }
 // free text; returns '' when skipped, null when cancelled
 async function vgText(prompt, optional) {
-  const v = await vgAsk(optional ? `${prompt}` : prompt);
+  let v = await vgAsk(optional ? `${prompt}` : prompt);
   if (v === null) return null;
   if (optional && vgIs(VG_SKIP, vfNorm(v))) return '';
+  // Whisper sometimes adds a closing "Thank you" to a clip that ends in quiet: never keep it as part of a saved answer
+  v = v.replace(/[\s,.!?।]+(thank you( so much| very much)?|thanks( a lot)?|thanks for watching|धन्यवाद|ধন্যবাদ)[\s.!?।]*$/i, '');
   return v.replace(/[.।]+$/, '').slice(0, 80);
 }
 // read it back, wait for yes / no; true / false / null (cancelled)
@@ -212,7 +214,8 @@ function vgSuggest(name) {
   });
   return best && best.toLowerCase().replace(/[^a-z]/g, '') !== x ? best : null;
 }
-
+ 
+// ---------- when the name is still wrong: a box to type it, or read it from a photo of the strip / prescription ----------
 const VG_N = {
   en: { say: 'I could not get the name right. A box is open. Type the medicine name, or upload a photo of the strip or prescription. Or say spell.',
     title: 'Medicine name', label: 'Type the medicine name', save: 'Save this name', photo: 'Upload a photo of the strip or prescription', spell: 'Spell it by voice', cancel: 'Cancel',
@@ -284,7 +287,9 @@ function vgNameBox() {
     vfSay(N.say, vfListen);
   });
 }
-
+ 
+// a name that must be right: ask, offer a correction, read it back, allow spelling
+// for medicines, a "no" at the read-back opens the box (type it, or read it from a photo)
 async function vgName(prompt, isMedicine) {
   const T = vgT(); let src = 'voice', fromPhoto = false;
   vgNameSrc = 'voice';
@@ -306,8 +311,8 @@ async function vgName(prompt, isMedicine) {
     if (isMedicine && c === 'no') {
       const r = await vgNameBox(); if (r === null) return null;
       if (r === 'spell') { v = await vgSpell(); if (v === null) return null; src = 'spelled'; continue; }
-      if (r.src === 'typed') { vgNameSrc = 'typed'; return r.name; }      
-      v = r.name; src = 'photo'; fromPhoto = true; continue;               
+      if (r.src === 'typed') { vgNameSrc = 'typed'; return r.name; }      // the person typed it: no read-back needed
+      v = r.name; src = 'photo'; fromPhoto = true; continue;               // from a photo: read it back and ask yes / no
     }
     v = await vgSpell(); if (v === null) return null; src = 'spelled';
   }
@@ -329,7 +334,7 @@ function vgFreq(t) {
   if (/morning|once|daily|every day|सुबह|एक बार|रोज|সকাল|একবার|প্রতিদিন/.test(s)) return 'Once a day, morning';
   return null;
 }
-function vgDuration(t) {          
+function vgDuration(t) {            // '' = ongoing, null = not understood
   const s = vhDigits(String(t)).toLowerCase();
   if (/ongoing|always|long term|lifelong|forever|continue|no end|हमेशा|लगातार|लंबे समय|সবসময়|চলবে|চলমান/.test(s)) return '';
   let n = (s.match(/\d+/) || [])[0];
@@ -344,7 +349,7 @@ function vgBlood(t) {
   const s = ' ' + vhDigits(String(t)).toLowerCase().replace(/[.,]/g, ' ').replace(/([+\-])/g, ' $1 ').replace(/\s+/g, ' ') + ' ';
   const sign = /negative|minus|-|नेगेटिव|মাইনাস|নেগেটিভ/.test(s) ? '-' : /positive|plus|\+|पॉजिटिव|पोजिटिव|পজিটিভ|প্লাস/.test(s) ? '+' : null;
   if (!sign) return null;
-  const has = w => s.includes(' ' + w + ' ');          
+  const has = w => s.includes(' ' + w + ' ');          // whole words (\b does not work for Hindi or Bengali letters)
   let g = null;
   if (has('ab') || has('a b') || has('ए बी') || has('এ বি')) g = 'AB';
   else if (has('a') || has('ए') || has('এ')) g = 'A';
@@ -366,7 +371,8 @@ function vgSayDur(d) {
   const m = VG_FQ[currentLangCode()], x = String(d || '').match(/^(\d+) (day|week|month)s$/);
   return m && x ? `${x[1]} ${m.unit[x[2]]}` : d;
 }
-
+ 
+// ---------- flow: add a medicine ----------
 async function vgAddMed() {
   const T = vgT();
   const name = await vgName(T.medName, true); if (name === null) return;
@@ -384,7 +390,8 @@ async function vgAddMed() {
   vhLastSaved = null;
   vfSay(`${T.medSaved} ${line}.`, vfListen);
 }
-
+ 
+// ---------- flow: add a condition ----------
 async function vgAddCond() {
   const T = vgT();
   const name = await vgName(T.cdName); if (name === null) return;

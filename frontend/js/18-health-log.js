@@ -1,7 +1,3 @@
-// NEW health log: tabs, prescription upload, doctor PDF
-//  to use, reads prescriptions, makes a PDF for the doctor
-// Everything is saved in this browser only. Old entries are kept: same keys, same format.
-
 const HL = {
   vitals:  'companion_health_log',     // BP, glucose, symptoms, other (same format as before)
   meds:    'companion_medicines',      // same key the old medicines section used
@@ -519,7 +515,7 @@ function hlBuildReport(days) {
   if (ot.length) { const c = capped(rev(ot), 40); h += H2('Other measurements') + table(['Date', 'What', 'Value'], c.rows.map(e => [hlDate(e.timestamp, true), hlEsc(e.type), hlEsc(e.value)])) + c.note; }
   if (!bp.length && !sg.length && !sy.length && !ot.length) h += H2('Readings') + `<div style="color:#666">No readings were logged in this period.</div>`;
 
-  h += `<div style="margin-top:22px;padding-top:8px;border-top:1px solid #ccc;font-size:10.5px;color:#666">Recorded by the patient in the Smart Companion app. This is a self-kept log to help the conversation with the doctor. It is not a medical record and it is not a diagnosis.</div></div>`;
+  h += `<div style="margin-top:22px;padding-top:8px;border-top:1px solid #ccc;font-size:10.5px;color:#666">Recorded by the patient in the Smart Companion app. This is a self-kept log to help the conversation with the doctor. Medicine names were entered or confirmed by the patient, so please check them against the prescription. It is not a medical record and it is not a diagnosis.</div></div>`;
   const wrap = document.createElement('div'); wrap.innerHTML = h; return wrap.firstElementChild;
 }
 
@@ -535,3 +531,4 @@ async function hlMakePdf(days) {
     pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', 'h2', 'svg'] },
   }).from(el).save();
 }
+ 

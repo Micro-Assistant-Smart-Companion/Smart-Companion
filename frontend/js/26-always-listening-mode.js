@@ -13,15 +13,15 @@ const VL_T = {
         done: 'ঠিক আছে। সাধারণ পর্দা চালু হয়েছে।', kept: 'ঠিক আছে। ভয়েস মোড চালু থাকবে।' }
 };
 const vlT = () => VL_T[(typeof currentLangCode === 'function' && currentLangCode()) || 'en'] || VL_T.en;
-
+ 
 const VL_STANDARD = /switch to standard mode|standard mode|सामान्य मोड|সাধারণ মোড/;
 const VL = {
   on: false, starting: false, stream: null, ctx: null, proc: null, src: null, mute: null,
   floor: 0.006, pre: [], utt: null, hot: 0, lastSorry: 0, armed: false, queue: Promise.resolve()
 };
-const VL_BLOCK = 2048, VL_PRE_MS = 700, VL_END_MS = 1000, VL_MIN_VOICED_MS = 260, VL_MAX_MS = 30000;
+const VL_BLOCK = 2048, VL_PRE_MS = 700, VL_END_MS = 850, VL_MIN_VOICED_MS = 260, VL_MAX_MS = 30000;
 const vlBlind = () => !!(typeof acGet === 'function' && acGet() && acGet().blind);
-
+ 
 // remember what the assistant said, so its own voice is never mistaken for the user
 const vlSaid = [];
 if (typeof speak === 'function') {
@@ -37,7 +37,7 @@ function vlIsEcho(text, barge) {
   const said = vlSaid.filter(x => Date.now() - x.at < 90000).map(x => x.t).join(' ');
   return !!said && w.filter(x => said.includes(x)).length / w.length >= 0.8;
 }
-
+ 
 // ---------- turning the listener on and off ----------
 async function vlStart() {
   if (VL.on || VL.starting) return;
@@ -71,7 +71,7 @@ function vlStop() {
   const b = document.getElementById('vfBtn'); if (b) b.classList.remove('listening');
 }
 function vlEnsure() { if (vfOn && !VL.on && !VL.starting) vlStart(); }
-
+ 
 // ---------- listening ----------
 function vlBlock(ev) {
   if (!VL.on) return;
@@ -79,9 +79,9 @@ function vlBlock(ev) {
   let sum = 0; for (let i = 0; i < n; i++) sum += data[i] * data[i];
   const rms = Math.sqrt(sum / n), copy = new Float32Array(data);     // the browser reuses its buffer
   const talking = typeof vfIsSpeaking === 'function' && vfIsSpeaking();
-  const thr = Math.max(0.018, VL.floor * 4) * (talking ? 2.2 : 1);   // higher while the assistant speaks, so its echo does not count
+  const thr = Math.max(0.014, VL.floor * 4) * (talking ? 2.2 : 1);   // higher while the assistant speaks, so its echo does not count
   const voice = rms > thr;
-
+ 
   if (!VL.utt) {
     if (!voice) VL.floor = Math.min(0.05, Math.max(0.003, VL.floor * 0.98 + rms * 0.02));
     VL.pre.push(copy); while (VL.pre.length * ms > VL_PRE_MS) VL.pre.shift();
@@ -108,7 +108,7 @@ function vlBarge() {
     if (typeof vgSt !== 'undefined' && vgSt) clearTimeout(vgSt.timer);   // do not re-ask while they are answering
   } catch (e) {}
 }
-
+ 
 // ---------- sending what was said ----------
 function vlWav(chunks, inRate) {
   let len = 0; chunks.forEach(c => len += c.length);
@@ -131,31 +131,57 @@ function vlFinish(u) {
     if (u.barge && typeof vgSt !== 'undefined' && vgSt) vgPrompt(true);
     return;
   }
+  // cut the trailing silence (keep 250 ms): Whisper invents words such as "Thank you" when a clip ends in silence
+  const cut = Math.floor((u.silentMs - 250) / u.ms);
+  if (cut > 0 && cut < u.chunks.length) u.chunks.splice(u.chunks.length - cut, cut);
+  vlTick();
   const blob = vlWav(u.chunks, u.rate);
   VL.queue = VL.queue.then(() => vlTranscribe(blob, u)).catch(e => console.error(e));
+}
+// a very soft tick: "I heard you, working on it" (so nobody repeats themselves while the text is being made)
+function vlTick() {
+  try {
+    const a = VL.ctx; if (!a) return;
+    const o = a.createOscillator(), g = a.createGain(); o.frequency.value = 660; g.gain.value = 0.08;
+    o.connect(g); g.connect(a.destination); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.12);
+    o.start(); o.stop(a.currentTime + 0.13);
+  } catch (e) {}
+}
+// Whisper sometimes adds a closing "Thank you" to a clip that ends in quiet: remove it when other words came before it
+const VL_TAIL = /[\s,.!?।]+(thank you( so much| very much)?|thanks( a lot)?|thanks for watching|bye( bye)?|धन्यवाद|शुक्रिया|ধন্যবাদ)[\s.!?।]*$/i;
+const VL_ONLY = /^[\s,.!?।]*(thank you( so much)?|thanks|bye( bye)?|you|धन्यवाद|ধন্যবাদ)[\s.!?।]*$/i;
+function vlClean(text, u) {
+  let t = String(text || '').trim();
+  if (VL_ONLY.test(t) && u.voicedMs < 900 && typeof vgSt !== 'undefined' && vgSt) return '';   // an answer is awaited and this is only noise
+  const c = t.replace(VL_TAIL, '').trim();
+  return c || t;
 }
 async function vlTranscribe(blob, u) {
   const fd = new FormData();
   fd.append('file', blob, 'recording.wav'); fd.append('language', currentLangCode()); fd.append('vocab', sttVocab());
   let data = null;
+  const ac = new AbortController(), kill = setTimeout(() => ac.abort(), 15000);     // never wait a minute on a stuck request
+  try { setStatus('…'); } catch (e) {}
   try {
-    const res = await fetch(`${API}/transcribe`, { method: 'POST', body: fd });
+    const res = await fetch(`${API}/transcribe`, { method: 'POST', body: fd, signal: ac.signal });
     if (!res.ok) throw new Error('transcribe ' + res.status);
     data = await res.json();
   } catch (e) {
     console.error(e);
+    clearTimeout(kill); try { setStatus(''); } catch (x) {}
     if (Date.now() - VL.lastSorry > 10000) { VL.lastSorry = Date.now(); try { speak(vlT().sorry); } catch (x) {} }
     return;
   }
-  const text = (data.text || '').trim();
+  clearTimeout(kill); try { setStatus(''); } catch (e) {}
+  const text = vlClean(data.text, u);
   if (!text) { if (typeof vgSt !== 'undefined' && vgSt) vgPrompt(true); return; }
   if (vlIsEcho(text, u.barge)) return;               // the assistant heard itself: ignore, do not re-ask
   if (typeof unlockBadge === 'function') { try { unlockBadge('voice', 'Voice Explorer'); } catch (e) {} }
   if (typeof goalEl !== 'undefined' && goalEl) { goalEl.value = ''; goalEl.style.height = 'auto'; }
   sendMessage(text);
 }
-
-
+ 
+ 
 // ---------- the language only changes when the user says so ----------
 const VL_LANG_WORDS = {
   hi: ['hindi', 'हिंदी', 'हिन्दी', 'हिंदी में', 'हिन्दी में', 'হিন্দি', 'হিন্দিতে'],
@@ -184,8 +210,8 @@ const _vlOrigSetLang = setLangCode;
 setLangCode = function (code) { const r = _vlOrigSetLang.apply(this, arguments); vlRepaint(); return r; };
 const _vlLangPicker = document.getElementById('langPicker');
 if (_vlLangPicker) _vlLangPicker.addEventListener('change', vlRepaint);
-
-
+ 
+ 
 // ---------- speaking speed ----------
 const VL_FASTER = /^(speak |talk |read |go )?(a bit |much |little )?(faster|quicker)$|speed up|तेज़ बोलो|तेज बोलो|और तेज|और तेज़|তাড়াতাড়ি বলো|দ্রুত বলো|আরও দ্রুত/;
 const VL_SLOWER = /^(speak |talk |read |go )?(a bit |much |little )?slower$|slow down|धीरे बोलो|धीमे बोलो|और धीरे|আস্তে বলো|ধীরে বলো|আরও আস্তে/;
@@ -201,18 +227,19 @@ document.addEventListener('keydown', (e) => {                 // Alt + . faster,
   if (!e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === '.') { e.preventDefault(); vlRate(1); } else if (e.key === ',') { e.preventDefault(); vlRate(-1); }
 });
-
+ 
+// ---------- hooks into the earlier files ----------
 vfListen = function () { vlEnsure(); };                              // "now listen for the reply" is always already true
-
+ 
 const _vlOrigStartMic = startMic;                                    // the mic button and Alt+M
 startMic = function () {
   if (vfOn) { vlEnsure(); try { setStatus(''); } catch (e) {} return; }
   return _vlOrigStartMic.apply(this, arguments);
 };
-
+ 
 const _vlOrigVfSet = vfSet;
 vfSet = function (on, silent) {
-  if (!on && vfOn && vlBlind()) {                                    /
+  if (!on && vfOn && vlBlind()) {                                    // a blind user cannot undo this by accident
     try { speak(vlT().stays); } catch (e) {}
     return;
   }
@@ -220,7 +247,8 @@ vfSet = function (on, silent) {
   if (vfOn) vlEnsure(); else vlStop();
   return r;
 };
-
+ 
+// "switch to standard mode" - asks first
 const _vlOrigSend = sendMessage;
 sendMessage = function (text) {
   if (typeof text === 'string' && !(typeof vgSt !== 'undefined' && vgSt) && vfOn) {
@@ -239,7 +267,9 @@ sendMessage = function (text) {
   }
   return _vlOrigSend.apply(this, arguments);
 };
-
+ 
+// ---------- on page load ----------
+// Browsers allow speech and the microphone only after a key press or tap, so a returning blind user presses any key once.
 function vlArm() {
   if (VL.armed) return; VL.armed = true;
   try { setStatus(vlT().press); } catch (e) {}
@@ -254,7 +284,7 @@ setTimeout(() => {
   if (vlBlind() && !vfOn) { try { vfOn = true; localStorage.setItem(VF_KEY, '1'); vfPaint(); } catch (e) {} }
   if (vfOn && !document.getElementById('accOverlay') && !document.getElementById('wcOverlay')) vlArm();
 }, 1200);
-
+ 
 (function vlStyle() {
   const st = document.createElement('style');
   st.textContent = `.vf-btn.listening::after{content:"";width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.6);animation:vlPulse 1.8s infinite}
@@ -263,3 +293,4 @@ setTimeout(() => {
     @media (prefers-reduced-motion:reduce){.vf-btn.listening::after{animation:none}}`;
   document.head.appendChild(st);
 })();
+ 

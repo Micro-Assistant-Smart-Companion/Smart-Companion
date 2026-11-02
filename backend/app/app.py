@@ -108,8 +108,9 @@ def decompose(req: TaskRequest):
 
 
 @app.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe(file: UploadFile = File(...), language: str = Form(default="en"), auto: str = Form(default="0"), vocab: str = Form(default="")):
-    audio_bytes = await file.read()
+def transcribe(file: UploadFile = File(...), language: str = Form(default="en"), auto: str = Form(default="0"), vocab: str = Form(default="")):
+    # plain "def": FastAPI runs it in a worker thread, so a slow Whisper call no longer freezes the rest of the app
+    audio_bytes = file.file.read()
     # the language picked in the app is used as it is (send auto=1 to let Whisper detect it instead)
     return transcribe_detect(audio_bytes, filename=file.filename,
                              content_type=file.content_type, hint=language, auto=(auto == "1"), vocab=vocab)

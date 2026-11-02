@@ -83,6 +83,8 @@ step numbering purposes.
 {older_note}{done_text}
 
 Give the NEXT {max_steps} steps, continuing forward from here.
+Set "is_final" to true ONLY when the last step you give is itself the final action of the task
+(for example the dish is served). If more work remains after your steps, "is_final" must be false.
 NEVER restart the task from the beginning or repeat earlier stages already listed above.
 If this is a finite task (like a recipe, a single errand, or anything with a clear end point)
 and it is now naturally complete (e.g. the food is cooked and served, the task is done),
@@ -94,6 +96,8 @@ already listed above - that means the task is actually done: set "is_final" to
 true and return an empty "steps" list, rather than repeating similar content."""
     else:
         progress = f"""Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task.
+These are only the opening steps, so for a task with many stages (cooking a dish, a trip, a project)
+"is_final" MUST be false. Use true only if the whole task is truly finished within these {max_steps} steps.
 
 IMPORTANT - avoid decision paralysis, for ANY kind of goal (studying,
 applying for a visa, booking something, cooking, cleaning, banking, etc.),
@@ -226,6 +230,14 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
         parsed["steps"] = steps[:max_steps]
         parsed["is_final"] = False  
         steps = parsed["steps"]
+
+    # the very first batch of a real task (steps carry a time) is never the end of a multi-stage task:
+    # the model sometimes says "final" after 3 steps of a recipe, so keep the "next steps" button
+    if (not completed_steps and len(steps) >= max_steps and parsed.get("is_final")
+            and any(isinstance(x, dict) and x.get("time") for x in steps)
+            and not any(isinstance(x, dict) and x.get("clarify") for x in steps)):
+        print("[fix] first batch was marked final although it is a task with a time per step - keeping it open")
+        parsed["is_final"] = False
 
     if completed_steps and steps and _looks_repetitive(steps, completed_steps):
         print("[warning] New steps look like a repeat of earlier ones - marking task complete instead")
