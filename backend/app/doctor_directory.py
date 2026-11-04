@@ -39,17 +39,8 @@ def init_db():
             lat REAL, lon REAL, radius_km REAL,
             seeded_at TEXT DEFAULT CURRENT_TIMESTAMP
         )""")
-        c.execute("""CREATE TABLE IF NOT EXISTS emergency_alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact_name TEXT,
-            contact_phone TEXT,
-            message TEXT,
-            lat REAL,
-            lon REAL,
-            hospital_name TEXT,
-            status TEXT DEFAULT 'dispatched',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )""")
+        # emergency contacts and locations are no longer kept on the server: remove any old copy
+        c.execute("DROP TABLE IF EXISTS emergency_alerts")
 
 
 OVERPASS_MIRRORS = [
@@ -263,51 +254,3 @@ def request_appointment(a: AppointmentIn):
     return {"request_id": cur.lastrowid, "status": "requested", "whatsapp_link": whatsapp_link,
             "message": "Tap the link to send your request to the clinic." if whatsapp_link
                        else "This clinic has no phone on file yet - showing address only."}
-
-
-class EmergencyAlertIn(BaseModel):
-    contact_name: str = "Emergency Contact"
-    contact_phone: str
-    message: str
-    lat: float | None = None
-    lon: float | None = None
-    hospital_name: str | None = None
-
-
-@router.post("/alert")
-def dispatch_emergency_alert(a: EmergencyAlertIn):
-    print(f"\n==================== [EMERGENCY PROTOCOL ACTIVATED] ====================")
-    print(f"Target Contact: {a.contact_name} ({a.contact_phone})")
-    print(f"Coordinates: ({a.lat}, {a.lon}) | Destination: {a.hospital_name}")
-    print(f"Message Body:\n{a.message}")
-    print(f"========================================================================\n")
-
-    with _conn() as c:
-        cur = c.execute(
-            """INSERT INTO emergency_alerts
-               (contact_name, contact_phone, message, lat, lon, hospital_name, status)
-               VALUES (?, ?, ?, ?, ?, ?, 'dispatched')""",
-            (a.contact_name, a.contact_phone, a.message, a.lat, a.lon, a.hospital_name))
-        alert_id = cur.lastrowid
-
-    # WhatsApp link the user can tap to send the message themselves
-    digits = re.sub(r"\D", "", a.contact_phone)
-    if len(digits) == 10:
-        digits = "91" + digits
-    wa_link = f"https://wa.me/{digits}?text={requests.utils.quote(a.message)}" if digits else None
-
-    return {
-        "alert_id": alert_id,
-        "status": "dispatched",
-        "contact_name": a.contact_name,
-        "contact_phone": a.contact_phone,
-        "whatsapp_link": wa_link,
-        "message": a.message
-    }
-
-
-@router.get("/alerts")
-def list_emergency_alerts(limit: int = 20):
-    with _conn() as c:
-        rows = c.execute("SELECT * FROM emergency_alerts ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-    return {"count": len(rows), "alerts": [dict(r) for r in rows]}

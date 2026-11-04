@@ -31,6 +31,7 @@ class TaskResponse(BaseModel):
     is_final: bool = False
     was_error: bool = False
     is_emergency: bool = False
+    is_crisis: bool = False
 
 
 class TranscribeResponse(BaseModel):

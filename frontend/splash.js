@@ -1,29 +1,12 @@
-/* ==========================================================================
-   SMART COMPANION - LOADING SCREEN
-   Put this as the FIRST thing inside <body> in index.html:
-       <script src="splash.js"></script>
-
-   While the backend is still starting (it can take a few minutes), this shows a calm
-   screen. It keeps asking the backend "are you ready?". The moment the backend says yes,
-   the screen fades away and the app is there. If the backend answers within a second,
-   nothing is shown at all.
-   Nothing here pretends to be a progress bar: it shows the real waiting time.
-   ========================================================================== */
 (function () {
   'use strict';
-
-  var host = '';
-  try { host = localStorage.getItem('companion_api_host') || ''; } catch (e) {}
-  if (!host) {
-    host = (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1')
-      ? 'http://' + location.hostname + ':8000' : 'http://127.0.0.1:8000';
-  }
+  var host = ''; 
 
   var SHOW_AFTER_MS = 700;        // do not flash the screen if the backend is already up
   var POLL_MS = 1500;
   var SLOW_AFTER_S = 240;         // after 4 minutes, offer "try again" and "open anyway"
 
-  window.__pfPending = true;      // other scripts wait for the 'pf:backend-ready' event while this is true
+  window.__pfPending = true;      
   var start = Date.now(), root = null, timer = null, tipTimer = null, done = false, slowShown = false, tipIx = 0;
 
   var TIPS = [
@@ -125,6 +108,8 @@
     if (done) return;
     var ctrl = window.AbortController ? new AbortController() : null;
     var to = setTimeout(function () { ctrl && ctrl.abort(); }, 4000);
+    
+    // Use relative path '/health' so it respects HTTPS and routes correctly through the tunnel
     fetch(host + '/health', { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { clearTimeout(to); if (r.ok) finish(true); else again(); })
       .catch(function () { clearTimeout(to); again(); });

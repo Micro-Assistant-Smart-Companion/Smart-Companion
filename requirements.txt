@@ -1,0 +1,24 @@
+fastapi
+uvicorn
+pydantic
+spacy
+groq
+huggingface_hub
+python-dotenv
+python-multipart
+pyaudio
+numpy
+torch
+ultralytics
+pillow
+pymupdf
+requests
+scikit-learn
+sentence-transformers
+opencv-python
+ddgs
+click>=8.4.2,<9
+
+# gTTS (the Hindi/Bengali read-aloud fallback) 
+# janina kno ekhan thke downlaod hocchena , alada kore downlaod kore nis eta , actually may be verson mismatcjh khacche hoitoh bakider sathe
+#   pip install gTTS --no-deps

@@ -1,5 +1,3 @@
-// sending a message to the server (/decompose-task), task decomposition integration, and handling the response
-
 async function callBackend(goal, resetTask) {
   if (resetTask) completedSteps = [];
   const res = await fetch(`${API}/decompose-task`, {
@@ -44,7 +42,9 @@ async function sendMessage(text) {
     }
     snapshotCurrentSession();
 
-    if (data.is_emergency) {
+    if (data.is_crisis) {
+      showCrisisPanel();
+    } else if (data.is_emergency) {
       showEmergencyPanel();
     } else {
       maybeShowNearbyHealthcare();

@@ -5,6 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import json
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
  
@@ -37,7 +38,7 @@ from visual.pdfqa import extract_pages, store_document, answer_question_about_do
 from app.router import classify_intent, build_agent_system_note
 from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
-from app.triage import check_emergency, EMERGENCY_TEXT
+from app.triage import check_emergency, check_crisis, EMERGENCY_TEXT, CRISIS_TEXT
 from app.prescription import extract_prescription
 from app.resources import get_resources
 from app.sync import router as sync_router
@@ -79,6 +80,17 @@ def redact_pii(input: TextInput):
 def decompose(req: TaskRequest):
     lang = req.language if req.language in ("en", "hi", "bn") else "en"
     safe_goal = redact_text(req.goal)
+
+    # Thoughts of suicide or self-harm: calm words and helplines, never sent to the AI. (The page checks first
+    # as well; this is the safety net.) Looks ONLY at what the user just said.
+    if check_crisis(req.goal):
+        return {
+            "steps": [{"step": 1, "text": CRISIS_TEXT[lang]}],
+            "is_final": True,
+            "is_question": False,
+            "is_emergency": False,
+            "is_crisis": True,
+        }
 
     # Emergency check looks ONLY at what the user just said, never at the Health Log text.
     if check_emergency(req.goal):
@@ -264,3 +276,5 @@ def nearby_healthcare(req: NearbyRequest):
 @app.post("/resources")
 def resources(input: TextInput):
     return get_resources(redact_text(input.text))
+
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")

@@ -1,5 +1,3 @@
-// the emergency SOS screen, location, hospital directions
-// Caches the browser's last known location client-side, so we don't  re-ask GPS (with its own permission prompt + latency) on every single lookup - same pattern apps like Zomato/Swiggy use. maxAgeMs controls how stale a cached fix is allowed to be before we fetch a fresh one.
 const LOCATION_CACHE_KEY = 'companion_last_location';
 
 function getCachedOrFreshLocation(maxAgeMs = 10 * 60 * 1000) {
@@ -45,7 +43,6 @@ function showEmergencyPanel() {
   let currentTravelMode = 'driving'; // 'driving', 'walking', 'transit'
   let currentDirFlg = 'd'; // 'd', 'w', 'r'
   let nearbyHospitalsList = [];
-  let alertDispatched = false;
 
   box.innerHTML = `
     <div class="dialog-header">
@@ -175,8 +172,8 @@ function showEmergencyPanel() {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--coral);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
           <span>Alert your emergency contact</span>
         </div>
-        <span id="sosAlertStatusBadge" class="sos-alert-badge ${alertDispatched ? 'dispatched' : 'pending'}">
-          ${alertDispatched ? '✅ Alert Dispatched & Logged' : '⚡ Preparing alert…'}
+        <span id="sosAlertStatusBadge" class="sos-alert-badge dispatched">
+          ✅ Alert ready. Tap Send below
         </span>
       </div>
 
@@ -216,37 +213,8 @@ function showEmergencyPanel() {
       };
     }
 
-    // Automatically dispatch alert to backend service
-    if (!alertDispatched && primaryContact.phone) {
-      alertDispatched = true;
-      fetch(`${API}/directory/alert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_name: primaryContact.name,
-          contact_phone: primaryContact.phone,
-          message: alertMessage,
-          lat: originData ? originData.lat : null,
-          lon: originData ? originData.lon : null,
-          hospital_name: destinationData ? destinationData.name : null
-        })
-      })
-      .then(res => res.json())
-      .then(resData => {
-        const badge = contactArea.querySelector('#sosAlertStatusBadge');
-        if (badge) {
-          badge.className = 'sos-alert-badge dispatched';
-          badge.textContent = '✅ Alert Dispatched & Logged';
-        }
-      })
-      .catch(() => {
-        const badge = contactArea.querySelector('#sosAlertStatusBadge');
-        if (badge) {
-          badge.className = 'sos-alert-badge dispatched';
-          badge.textContent = '✅ Alert ready. Tap Send below';
-        }
-      });
-    }
+    // Nothing is sent to our server. The contact, the message and the location stay on this device;
+    // the person taps Send (WhatsApp / SMS) or Call themselves.
   }
 
   // Initial render of contact card
