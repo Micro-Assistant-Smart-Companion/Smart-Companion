@@ -2,10 +2,24 @@ import os
 import re
 import json
 import base64
+from typing import Optional, List, Dict
 from groq import Groq
 
-api_key = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=api_key)
+try:
+    from app.prompts.builder import build_system_prompt
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
+    from app.prompts.builder import build_system_prompt
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+api_key = os.environ.get("GROQ_API_KEY", "")
+client = Groq(api_key=api_key or "gsk_placeholder_key")
 
 VISION_MODEL = "qwen/qwen3.8-27b"
 
@@ -19,7 +33,7 @@ def _strip_markdown(text: str) -> str:
     return text.strip()
 
 
-def _extract_json(raw_text: str):
+def _extract_json(raw_text: str) -> Optional[dict]:
     """Lenient JSON parsing - strips code fences if present, falls back to
     pulling out the first {...} block if the model added stray text around it."""
     if not raw_text:
@@ -41,65 +55,46 @@ def _extract_json(raw_text: str):
     return None
 
 
-def _build_instruction(question: str, history: list = None) -> str:
+def _build_user_query(question: str, history: Optional[List[Dict[str, str]]] = None) -> str:
+    """Build the conversational user message with optional turns."""
     history = history or []
-
     history_block = ""
     if history:
         turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
-        history_block = f"""Conversation so far:
-{turns}
+        history_block = (
+            f"Conversation so far:\n{turns}\n\n"
+            f"If the question below is a follow-up about something already discussed above, "
+            f"use that context in your answer.\n\n"
+        )
 
-If the question below is a follow-up about something already discussed above,
-use that context in your answer.
-
-"""
-
-    return f"""{history_block}You are a live camera companion for a neurodivergent user who scans
-quickly and benefits from short, separated points rather than one dense paragraph.
-
-A camera frame is attached below. The user's question may be ABOUT what the
-camera currently sees (e.g. "what color is this bottle", "where is my ball"),
-or it may be a completely unrelated GENERAL KNOWLEDGE question that has
-nothing to do with the image (e.g. "who is the president of India", "what is
-a black hole", "what's 12 times 8"). Decide which kind it is:
-
-- If the question is about the image, answer using what you see in it.
-- If the question is general knowledge unrelated to the image, IGNORE the
-  image entirely and just answer the question directly from what you know,
-  the same way you would in a normal conversation. Do not mention the photo
-  or say you can't help just because the question isn't about it.
-
-Respond with ONLY raw JSON, no markdown, no code fences, in this exact shape:
-{{"headline": "one short, direct sentence answering the question plainly", "steps": ["first point", "second point"]}}
-
-Rules:
-- "headline": the plain, direct answer in one sentence.
-- "steps": break any extra detail into short, separate points - one idea per point,
-  plain simple sentences, no markdown, no asterisks, no headers. If there's nothing
-  more to add beyond the headline, use an empty list for "steps".
-- If the image contains a table, schedule, or list AND the question is about it,
-  describe it as separate flowing-sentence points instead of recreating its formatting.
-
-Question: "{question}\""""
+    return (
+        f"{history_block}"
+        f"A camera frame is provided.\n"
+        f"Question: \"{question}\"\n\n"
+        f"Respond with ONLY raw JSON matching: {{\"headline\": \"...\", \"steps\": [\"...\"]}}"
+    )
 
 
-def answer_about_image(image_bytes: bytes, question: str, history: list = None) -> dict:
+def answer_about_image(image_bytes: bytes, question: str, history: Optional[List[Dict[str, str]]] = None) -> dict:
+    """Query the vision model about an image or camera frame using modular vision prompts."""
+    system_prompt = build_system_prompt("vision")
+    user_query = _build_user_query(question, history)
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
     completion = client.chat.completions.create(
         model=VISION_MODEL,
         messages=[
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": _build_instruction(question, history)},
+                    {"type": "text", "text": user_query},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                     },
                 ],
-            }
+            },
         ],
         temperature=0.4,
         max_completion_tokens=500,

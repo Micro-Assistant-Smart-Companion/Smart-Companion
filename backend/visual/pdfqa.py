@@ -14,8 +14,21 @@ except ImportError:
 from groq import Groq
 from visual.semantic_search import find_relevant_pages
 
-api_key = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=api_key)
+try:
+    from app.prompts.builder import build_system_prompt
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
+    from app.prompts.builder import build_system_prompt
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+api_key = os.environ.get("GROQ_API_KEY", "")
+client = Groq(api_key=api_key or "gsk_placeholder_key")
 
 TEXT_MODEL = "openai/gpt-oss-20b"
 VISION_MODEL = "qwen/qwen3.8-27b"
@@ -64,6 +77,7 @@ def _describe_scanned_page(page, max_retries: int = 4) -> str:
     pix = page.get_pixmap(dpi=100)
     image_bytes = pix.tobytes("png")
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
+    system_prompt = build_system_prompt("scanned_page")
 
     for attempt in range(max_retries + 1):
         try:
@@ -71,6 +85,7 @@ def _describe_scanned_page(page, max_retries: int = 4) -> str:
             completion = client.chat.completions.create(
                 model=VISION_MODEL,
                 messages=[
+                    {"role": "system", "content": system_prompt},
                     {
                         "role": "user",
                         "content": [
@@ -226,35 +241,6 @@ def _clean_markdown(text: str) -> str:
     return text.strip()
 
 
-def _build_prompt(document_text: str, question: str, focus_page: int = None) -> str:
-    focus_note = (
-        f"The user is asking specifically about page {focus_page}. Focus your "
-        f"answer on that page's content, though you may reference other pages "
-        f"if useful for context.\n\n" if focus_page is not None else ""
-    )
-    return f"""You are helping someone understand a document they don't fully
-follow - it could be a bank letter, a legal paper, or a homework assignment.
-Explain things in plain, simple, everyday language, as you would to a
-friend, not with legal or technical jargon.
-
-{focus_note}Answer using ONLY the document below. If the answer isn't in the document,
-say so plainly rather than guessing.
-
-Do NOT use markdown formatting - no asterisks, no bullet symbols, no
-headers. Write in plain sentences only.
-
-Structure your reply in exactly two parts:
-1. FIRST LINE: one short, direct sentence answering the question.
-2. Then a blank line, followed by more detail/explanation if useful.
-
-DOCUMENT:
-\"\"\"
-{document_text}
-\"\"\"
-
-QUESTION: "{question}\""""
-
-
 def answer_question_about_document(document_id: str, question: str) -> dict:
     doc = DOCUMENTS.get(document_id)
     if not doc:
@@ -270,11 +256,26 @@ def answer_question_about_document(document_id: str, question: str) -> dict:
 
     document_text = _assemble_document_text(doc)
     focus_page = (named_page + 1) if named_page is not None else None
-    prompt = _build_prompt(document_text, question, focus_page)
+    
+    focus_note = (
+        f"The user is asking specifically about page {focus_page}. Focus your "
+        f"answer on that page's content, though you may reference other pages "
+        f"if useful for context.\n\n" if focus_page is not None else ""
+    )
+    user_content = (
+        f"{focus_note}"
+        f"DOCUMENT CONTENT (UNTRUSTED USER DATA):\n\"\"\"\n{document_text}\n\"\"\"\n\n"
+        f"QUESTION: \"{question}\""
+    )
+
+    system_prompt = build_system_prompt("document")
 
     completion = client.chat.completions.create(
         model=TEXT_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
         temperature=0.3,
         max_tokens=700,
     )

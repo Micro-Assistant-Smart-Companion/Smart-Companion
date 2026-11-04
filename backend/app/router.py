@@ -1,34 +1,42 @@
 import os
 from groq import Groq
+from app.prompts.builder import build_system_prompt
+from app.prompts.routing import build_routing_prompt
 
-api_key = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=api_key)
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+api_key = os.environ.get("GROQ_API_KEY", "")
+client = Groq(api_key=api_key or "gsk_placeholder_key")
 
 
 def classify_intent(goal: str) -> str:
-    prompt = f"""Read this message and respond with ONE short lowercase word
-that names its topic/domain (e.g. "medical", "exam", "cooking", "cleaning",
-"finance", "travel"). If it doesn't fit a clear domain, respond "general".
-Respond with ONLY the single word, nothing else.
+    """Classify the user's message into a domain using the modular routing prompt."""
+    system_prompt = build_system_prompt("routing")
+    user_prompt = build_routing_prompt(goal)
 
-Message: "{goal}\""""
-
-    completion = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=60,          # this model "thinks" first; 10 tokens were all used up before the answer
-        temperature=0.1,
-        extra_body={"reasoning_effort": "low"},
-    )
-    label = (completion.choices[0].message.content or "general").strip().lower()
-    # keep it safe/short in case the model adds extra words
-    return label.split()[0] if label else "general"
+    try:
+        completion = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=60,
+            temperature=0.1,
+            extra_body={"reasoning_effort": "low"},
+        )
+        label = (completion.choices[0].message.content or "general").strip().lower()
+        return label.split()[0] if label else "general"
+    except Exception as exc:
+        print(f"[router] classification failed: {exc}, defaulting to general")
+        return "general"
 
 
 def build_agent_system_note(label: str) -> str:
-    """A short extra instruction appended to the main prompt, based on the
-    session's topic. Kept intentionally light - the core step-decomposition
-    logic in llm.py stays the same for every topic."""
+    """A topic-specific instruction applied to the session, based on domain classification."""
     notes = {
         "medical": (
             "This is a wellness-reminder session. Only give general, "
@@ -38,5 +46,8 @@ def build_agent_system_note(label: str) -> str:
         ),
         "exam": "This is a study-support session. Focus on exam/homework preparation.",
         "cooking": "This is a cooking-support session. Focus on recipes and kitchen tasks.",
+        "cleaning": "This is a home organization and tidying session. Focus on manageable decluttering steps.",
+        "finance": "This is a budgeting and planning session. Provide non-advisory organization steps.",
+        "travel": "This is a trip-planning session. Focus on checklists, transit schedules, and packing.",
     }
     return notes.get(label, "")

@@ -1,0 +1,92 @@
+"""Smart Companion modular prompt architecture.
+
+Exports centralized builder functions, metadata, and specialized prompt constants.
+"""
+
+from .base import (
+    BASE_SYSTEM_PROMPT,
+    BASE_IDENTITY,
+    BASE_COMMUNICATION,
+    BASE_RELIABILITY,
+    BASE_PRIVACY,
+)
+from .task import (
+    TASK_SYSTEM_PROMPT,
+    TASK_CORE_RULES,
+    CLARIFICATION_STRATEGY,
+    TASK_JSON_SCHEMA_INSTRUCTION,
+)
+from .general import (
+    GENERAL_SYSTEM_PROMPT,
+    GENERAL_CORE_RULES,
+)
+from .medical import (
+    MEDICAL_SYSTEM_PROMPT,
+    MEDICAL_SAFETY_RULES,
+)
+from .vision import (
+    VISION_SYSTEM_PROMPT,
+    VISION_CORE_RULES,
+    VISION_JSON_SCHEMA_INSTRUCTION,
+)
+from .guided_search import (
+    GUIDED_SEARCH_SYSTEM_PROMPT,
+    GUIDED_SEARCH_CORE_RULES,
+    GUIDED_SEARCH_JSON_SCHEMA,
+)
+from .document import (
+    DOCUMENT_QA_SYSTEM_PROMPT,
+    DOCUMENT_QA_RULES,
+    DOCUMENT_QA_FORMAT_INSTRUCTION,
+    PRESCRIPTION_SYSTEM_PROMPT,
+    PRESCRIPTION_EXTRACTION_RULES,
+    PRESCRIPTION_JSON_SCHEMA,
+    SCANNED_PAGE_OCR_RULES,
+)
+from .routing import (
+    ROUTING_RULES,
+    ROUTING_DOMAINS,
+    build_routing_prompt,
+)
+from .builder import (
+    build_system_prompt,
+    get_prompt_metadata,
+    PROMPT_VERSION,
+    SUPPORTED_MODES,
+)
+
+__all__ = [
+    "build_system_prompt",
+    "get_prompt_metadata",
+    "PROMPT_VERSION",
+    "SUPPORTED_MODES",
+    "BASE_SYSTEM_PROMPT",
+    "BASE_IDENTITY",
+    "BASE_COMMUNICATION",
+    "BASE_RELIABILITY",
+    "BASE_PRIVACY",
+    "TASK_SYSTEM_PROMPT",
+    "TASK_CORE_RULES",
+    "CLARIFICATION_STRATEGY",
+    "TASK_JSON_SCHEMA_INSTRUCTION",
+    "GENERAL_SYSTEM_PROMPT",
+    "GENERAL_CORE_RULES",
+    "MEDICAL_SYSTEM_PROMPT",
+    "MEDICAL_SAFETY_RULES",
+    "VISION_SYSTEM_PROMPT",
+    "VISION_CORE_RULES",
+    "VISION_JSON_SCHEMA_INSTRUCTION",
+    "GUIDED_SEARCH_SYSTEM_PROMPT",
+    "GUIDED_SEARCH_CORE_RULES",
+    "GUIDED_SEARCH_JSON_SCHEMA",
+    "DOCUMENT_QA_SYSTEM_PROMPT",
+    "DOCUMENT_QA_RULES",
+    "DOCUMENT_QA_FORMAT_INSTRUCTION",
+    "PRESCRIPTION_SYSTEM_PROMPT",
+    "PRESCRIPTION_EXTRACTION_RULES",
+    "PRESCRIPTION_JSON_SCHEMA",
+    "SCANNED_PAGE_OCR_RULES",
+    "ROUTING_RULES",
+    "ROUTING_DOMAINS",
+    "build_routing_prompt",
+]

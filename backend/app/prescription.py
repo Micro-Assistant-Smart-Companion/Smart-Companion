@@ -3,24 +3,11 @@ import re
 import base64
 from PIL import Image
 from app.llm import client, extract_json
+from app.prompts.builder import build_system_prompt
 
 VISION_MODEL = "qwen/qwen3.8-27b"
 MAX_PAGES = 3
 MAX_BYTES = 10_000_000
-
-PROMPT = """This is a photo or scan of a medical prescription (printed or handwritten).
-Read ONLY what is actually written on it.
-
-Respond with ONLY raw JSON, no markdown, in exactly this shape:
-{"conditions": ["..."], "medicines": [{"name": "", "dose": "", "frequency": "", "duration": "", "notes": ""}], "doctor": "", "date": ""}
-
-Rules:
-- "conditions": only diagnoses, complaints or history the doctor WROTE (for example after Dx, Diagnosis, C/o, H/o, "known case of"). If none is written, return []. NEVER guess a condition from a medicine.
-- "medicines": every medicine written, in the order shown. "name" exactly as written (brand or generic). "dose" like "500 mg". "frequency" as written, like "1-0-1", "twice daily", "at night". "duration" like "5 days". "notes" like "after food".
-- If a field is not written or cannot be read, use "". Do NOT fill it in from your own knowledge. If you cannot read a word, skip it rather than guess.
-- Do not include the patient's name, address or phone number anywhere.
-- "doctor": the doctor's name if printed, else "". "date": the prescription date if present, else "".
-"""
 
 
 def _pages_as_images(data: bytes):
@@ -93,13 +80,17 @@ def extract_prescription(data: bytes) -> dict:
     if not images:
         return {"ok": False, "message": "That file seems to be empty."}
 
-    content = [{"type": "text", "text": PROMPT}] + [
+    system_prompt = build_system_prompt("prescription")
+    content = [{"type": "text", "text": "Extract all prescribed medicines and written conditions from the following prescription image(s)."}] + [
         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b}"}} for b in images
     ]
     try:
         r = client.chat.completions.create(
             model=VISION_MODEL,
-            messages=[{"role": "user", "content": content}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+            ],
             temperature=0.1,
             max_completion_tokens=1800,
         )

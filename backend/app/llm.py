@@ -2,16 +2,21 @@ import os
 import json
 import re
 import time
+from typing import Any, Dict, List, Optional, Tuple
 from groq import Groq, RateLimitError
+from app.prompts.builder import build_system_prompt
 
-api_key = os.environ.get("GROQ_API_KEY")
-if not api_key:
-    raise ValueError("GROQ_API_KEY environment variable is not set.")
+from pathlib import Path
+from dotenv import load_dotenv
 
-client = Groq(api_key=api_key)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+api_key = os.environ.get("GROQ_API_KEY", "")
+client = Groq(api_key=api_key or "gsk_placeholder_key")
 
 
-def extract_json(raw_text: str):
+def extract_json(raw_text: str) -> Optional[dict]:
+    """Leniently extract and parse JSON from model output."""
     if not raw_text:
         return None
 
@@ -24,7 +29,7 @@ def extract_json(raw_text: str):
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    
+
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
         try:
@@ -35,150 +40,114 @@ def extract_json(raw_text: str):
     return None
 
 
-LANG_NAMES = {"hi": "Hindi (in Devanagari script)", "bn": "Bengali (in Bengali script)"}
-
-
-def _language_block(language: str) -> str:
-    name = LANG_NAMES.get(language)
-    if not name:
-        return ""   # English: prompt stays exactly as before
-    return (f'LANGUAGE: Write every "text" value in simple, everyday {name}, the way a friendly person '
-            f'would speak. Keep the JSON keys and true/false in English letters. Write the unit in "time" '
-            f'in the same language too. Do not add English sentences; common English words people really '
-            f'use (like BP or Wi-Fi) are fine.\n\n')
-
-
-def build_prompt(goal: str, reading_level: str, max_steps: int, tone: str,
-                  completed_steps: list, history: list = None, session_note: str = "",
-                  language: str = "en") -> str:
+def build_task_user_message(
+    goal: str,
+    max_steps: int = 3,
+    completed_steps: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, str]]] = None,
+) -> str:
+    """Build the dynamic user-turn message containing goal, history, and progress state."""
     history = history or []
-
-    note_block = f"IMPORTANT - follow this constraint strictly: {session_note}\n\n" if session_note else ""
-    note_block += _language_block(language)
+    completed_steps = completed_steps or []
 
     history_block = ""
     if history:
         turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
-        history_block = f"""Conversation so far:
-{turns}
-
-If the new input below is a follow-up question about something already said above
-(e.g. "what did you mean by step 2", "why do we do that", "can you explain that more") —
-answer it directly using that context in plain terms, and set "is_final" to true.
-Otherwise treat the input below as a new goal or question, ignoring the history for
-step numbering purposes.
-
-"""
+        history_block = (
+            f"Conversation so far:\n{turns}\n\n"
+            f"If the new input below is a follow-up question about something already said above "
+            f'(e.g. "what did you mean by step 2", "why do we do that", "can you explain that more") — '
+            f'answer it directly using that context in plain terms, and set "is_final" to true.\n'
+            f"Otherwise treat the input below as a new goal or question, ignoring the history for "
+            f"step numbering purposes.\n\n"
+        )
 
     if completed_steps:
-        RECENT_LIMIT = 5
-        recent = completed_steps[-RECENT_LIMIT:]
+        recent_limit = 5
+        recent = completed_steps[-recent_limit:]
         older_count = len(completed_steps) - len(recent)
         total_so_far = len(completed_steps)
 
         done_text = "\n".join(f"- {s}" for s in recent)
         older_note = f"(plus {older_count} earlier steps already done)\n" if older_count > 0 else ""
 
-        progress = f"""Already completed ({total_so_far} steps given so far for this goal):
-{older_note}{done_text}
-
-Give the NEXT {max_steps} steps, continuing forward from here.
-Set "is_final" to true ONLY when the last step you give is itself the final action of the task
-(for example the dish is served). If more work remains after your steps, "is_final" must be false.
-NEVER restart the task from the beginning or repeat earlier stages already listed above.
-If this is a finite task (like a recipe, a single errand, or anything with a clear end point)
-and it is now naturally complete (e.g. the food is cooked and served, the task is done),
-set "is_final" to true instead of inventing more steps.
-Many everyday tasks (booking something, using an app, a short errand) are genuinely
-finished in just a few steps. If you cannot think of a truly NEW, meaningfully
-different next action - and would otherwise just reword or repeat what was
-already listed above - that means the task is actually done: set "is_final" to
-true and return an empty "steps" list, rather than repeating similar content."""
+        progress = (
+            f"Already completed ({total_so_far} steps given so far for this goal):\n"
+            f"{older_note}{done_text}\n\n"
+            f"Give the NEXT {max_steps} steps, continuing forward from here.\n"
+            f'Set "is_final" to true ONLY when the last step you give is itself the final action of the task '
+            f"(for example the dish is served). If more work remains after your steps, \"is_final\" must be false.\n"
+            f"NEVER restart the task from the beginning or repeat earlier stages already listed above.\n"
+            f"If this is a finite task and it is now naturally complete, "
+            f'set "is_final" to true instead of inventing more steps.\n'
+            f"If you cannot think of a truly NEW, meaningfully different next action and would otherwise just "
+            f'reword or repeat earlier steps, set "is_final" to true and return an empty "steps" list.'
+        )
     else:
-        progress = f"""Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task.
-These are only the opening steps, so for a task with many stages (cooking a dish, a trip, a project)
-"is_final" MUST be false. Use true only if the whole task is truly finished within these {max_steps} steps.
+        progress = (
+            f"Give the FIRST {max_steps} steps to start this goal. Do not summarize the whole task.\n"
+            f'These are only the opening steps, so for a multi-stage task "is_final" MUST be false. '
+            f'Use true only if the whole task is truly finished within these {max_steps} steps.'
+        )
 
-IMPORTANT - avoid decision paralysis, for ANY kind of goal (studying,
-applying for a visa, booking something, cooking, cleaning, banking, etc.),
-using exactly ONE of these three approaches:
+    return (
+        f"{history_block}"
+        f"Input Goal/Question: \"{goal}\"\n\n"
+        f"{progress}\n\n"
+        f"Remember: Respond with ONLY valid raw JSON."
+    )
 
-1. If the goal is already specific enough to act on (e.g. "clean my kitchen",
-   "book a flight to Delhi", "study for my chemistry exam"), skip
-   clarification entirely - just give the normal first steps.
 
-2. If the goal is vague AND you cannot possibly know the real valid options
-   (e.g. "study for my exam" - you don't know what subjects this person has;
-   "apply for a visa" - you don't know which country; "clean the house" -
-   you don't know its layout), respond with exactly ONE step: set
-   "clarify" to true, ask ONE simple open question in "text" (e.g. "Which
-   subjects do you have for this exam?", "Which country's visa?"), and do
-   NOT include a "choices" field - the user will type their own free-text
-   answer, since you cannot guess it. NEVER invent a fixed list here (like
-   guessing "Math, Science, Hindi") - that would be wrong for most users.
-
-3. If the goal is vague BUT you genuinely already know a short, correct set
-   of real options worth offering (e.g. the user already told you their
-   subjects are Physics and Chemistry, and you're asking which to start
-   with), respond with exactly ONE step: set "clarify" to true, and include
-   "choices" (2-4 short options) alongside "text".
-
-In cases 2 and 3, include ONLY that one clarifying step - no other steps -
-and set "is_final" to false."""
-
-    choices_shape = '{{"step": 1, "text": "Which one first?", "clarify": true, "choices": ["Option A", "Option B"]}}'
-    open_shape = '{{"step": 1, "text": "Which subjects do you have for this exam?", "clarify": true}}'
-
-    return f"""{note_block}{history_block}You are a warm, friendly companion for all kinds of users, especially neurodivergent users.
-Talk like a supportive friend, not a manual - encouraging, patient, never robotic or curt.
-The input below may be either an ACTION goal (something to do and something to solve),
-a QUESTION (something to know), or a FOLLOW-UP about something already discussed above.
-
-- If it is an ACTION goal (e.g. "clean my room", "how to book a flight", "write a poem", "solve the math or physics problem"):
-  {progress}
-- If it is a QUESTION (e.g. "what is photosynthesis", "why is the sky blue", "what is a blackhole"):
-  Give a short, clear answer broken into {max_steps} small parts (e.g. one key
-  point per step), in the same simple style and then some advanced points. Set "is_final" to true, since a
-  question has one complete answer, not an ongoing task.
-- If it is a FOLLOW-UP question about the conversation above, answer it directly and set "is_final" to true.
-
-Reading level: {reading_level}. Tone: {tone}.
-
-Respond with ONLY raw JSON - no markdown, no code fences, no extra text
-before or after it. Follow this exact shape, with each step as its own
-separate object (never put a JSON array or code block inside a "text" value).
-
-Include a "time" field ONLY if this is an ACTION goal - a real-world task
-that actually takes time to do (e.g. "~5 min", "~2 min"). If this is a
-QUESTION or FOLLOW-UP (an explanation, not a task), leave "time" out
-entirely - an explanation does not take "5 minutes" to read, so do not
-invent a duration for it. Include a "choices" field ONLY for a single
-clarifying step as described above - normal steps never have "choices".
-
-Example of a normal step: {{"step": 1, "text": "first point", "time": "~5 min"}}
-Example of an open clarifying question (no choices - user types freely): {open_shape}
-Example of a choice-based clarifying step (real known options): {choices_shape}
-
-{{"steps": [...one or more step objects as shown above...], "is_final": false}}
-
-Input: "{goal}"
-"""
+def build_prompt(
+    goal: str,
+    reading_level: str = "simple",
+    max_steps: int = 3,
+    tone: str = "encouraging",
+    completed_steps: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, str]]] = None,
+    session_note: str = "",
+    language: str = "en",
+) -> str:
+    """Compose the full monolithic prompt string for backward compatibility."""
+    system_prompt = build_system_prompt(
+        mode="task",
+        context={
+            "reading_level": reading_level,
+            "tone": tone,
+            "language": language,
+            "session_note": session_note,
+        },
+    )
+    user_prompt = build_task_user_message(
+        goal=goal,
+        max_steps=max_steps,
+        completed_steps=completed_steps,
+        history=history,
+    )
+    return f"{system_prompt}\n\n---\n\n{user_prompt}"
 
 
 class RateLimited(Exception):
-    """Groq said 'too many tokens this minute' and waiting a little did not help."""
+    """Groq API rate limit encountered."""
 
 
-def _call_model(prompt: str):
+def _call_model(prompt_or_messages: Any) -> Tuple[str, float]:
+    """Invoke the Groq chat completions API with retries on rate limits."""
+    if isinstance(prompt_or_messages, list):
+        messages = prompt_or_messages
+    else:
+        messages = [{"role": "user", "content": str(prompt_or_messages)}]
+
     start = time.time()
+    response = None
     for attempt in range(2):
         try:
             response = client.chat.completions.create(
                 model="openai/gpt-oss-20b",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=700,      # the limit counts the tokens we ask to reserve, so keep this modest
+                messages=messages,
+                max_tokens=700,
                 temperature=0.4,
-                extra_body={"reasoning_effort": "low"},   # less hidden thinking -> the answer is not cut off
+                extra_body={"reasoning_effort": "low"},
             )
             break
         except RateLimitError as exc:
@@ -188,55 +157,115 @@ def _call_model(prompt: str):
                 raise RateLimited() from exc
             print(f"[rate limit] waiting {wait:.1f}s then trying once more")
             time.sleep(wait)
+
     elapsed = time.time() - start
+    if response is None or not response.choices:
+        return "", elapsed
+
     raw_text = (response.choices[0].message.content or "").strip()
     return raw_text, elapsed
 
 
-def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
-                    tone: str = "encouraging", completed_steps: list = None,
-                    history: list = None, session_note: str = "", language: str = "en") -> dict:
+def decompose_task(
+    goal: str,
+    reading_level: str = "simple",
+    max_steps: int = 3,
+    tone: str = "encouraging",
+    completed_steps: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, str]]] = None,
+    session_note: str = "",
+    language: str = "en",
+) -> dict:
+    """Decompose a goal or answer a question using modular system prompts."""
     completed_steps = completed_steps or []
-    prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history, session_note, language)
+    history = history or []
+
+    system_prompt = build_system_prompt(
+        mode="task",
+        context={
+            "reading_level": reading_level,
+            "tone": tone,
+            "language": language,
+            "session_note": session_note,
+        },
+    )
+    user_message = build_task_user_message(
+        goal=goal,
+        max_steps=max_steps,
+        completed_steps=completed_steps,
+        history=history,
+    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_message},
+    ]
 
     try:
-        raw_text, elapsed = _call_model(prompt)
+        raw_text, elapsed = _call_model(messages)
     except RateLimited:
-        return {"steps": [{"step": 1, "text": "I'm getting a lot of requests right now. Please wait about 10 seconds and ask again."}],
-                "is_final": True, "was_error": True}
+        return {
+            "steps": [{"step": 1, "text": "I'm getting a lot of requests right now. Please wait about 10 seconds and ask again."}],
+            "is_final": True,
+            "was_error": True,
+        }
+
     parsed = extract_json(raw_text)
-    print(f"[timing] LLM response took {elapsed:.2f}s (history_turns={len(history or [])}, completed_steps={len(completed_steps)})")
+    print(f"[timing] LLM response took {elapsed:.2f}s (history_turns={len(history)}, completed_steps={len(completed_steps)})")
 
     if parsed is None or "steps" not in parsed:
         print("[warning] Model did not return steps - retrying without conversation history")
-        clean_prompt = build_prompt(goal, reading_level, max_steps, tone, completed_steps, history=None,
-                                    session_note=session_note, language=language)
+        clean_user_message = build_task_user_message(
+            goal=goal,
+            max_steps=max_steps,
+            completed_steps=completed_steps,
+            history=None,
+        )
+        clean_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": clean_user_message},
+        ]
         try:
-            raw_text, elapsed = _call_model(clean_prompt)
+            raw_text, elapsed = _call_model(clean_messages)
         except RateLimited:
             raw_text, elapsed = "", 0
         parsed = extract_json(raw_text)
         print(f"[timing] Retry took {elapsed:.2f}s")
 
-    if parsed is None or "steps" not in parsed:
+    if parsed is None or "steps" not in parsed or not isinstance(parsed.get("steps"), list):
         parsed = {
             "steps": [{"step": 1, "text": "Sorry, I got a bit stuck there - could you try asking that again?"}],
             "is_final": True,
-            "was_error": True,  # tells the frontend not to save this into chat history
+            "was_error": True,
         }
+
     steps = parsed.get("steps", [])
+
+    # Validate and normalize step format
+    valid_steps = []
+    for idx, s in enumerate(steps):
+        if isinstance(s, dict) and "text" in s:
+            s["step"] = idx + 1
+            valid_steps.append(s)
+        elif isinstance(s, str) and s.strip():
+            valid_steps.append({"step": idx + 1, "text": s.strip()})
+    parsed["steps"] = valid_steps
+    steps = valid_steps
+
     if len(steps) > max_steps:
         print(f"[warning] Model returned {len(steps)} steps, expected {max_steps} - trimming")
         parsed["steps"] = steps[:max_steps]
-        parsed["is_final"] = False  
+        parsed["is_final"] = False
         steps = parsed["steps"]
 
-    # the very first batch of a real task (steps carry a time) is never the end of a multi-stage task:
-    # the model sometimes says "final" after 3 steps of a recipe, so keep the "next steps" button
-    if (not completed_steps and len(steps) >= max_steps and parsed.get("is_final")
-            and any(isinstance(x, dict) and x.get("time") for x in steps)
-            and not any(isinstance(x, dict) and x.get("clarify") for x in steps)):
-        print("[fix] first batch was marked final although it is a task with a time per step - keeping it open")
+    # First batch with duration estimates shouldn't prematurely mark finite multi-stage task as finished
+    if (
+        not completed_steps
+        and len(steps) >= max_steps
+        and parsed.get("is_final")
+        and any(isinstance(x, dict) and x.get("time") for x in steps)
+        and not any(isinstance(x, dict) and x.get("clarify") for x in steps)
+    ):
+        print("[fix] first batch was marked final although it is a task with time per step - keeping open")
         parsed["is_final"] = False
 
     if completed_steps and steps and _looks_repetitive(steps, completed_steps):
@@ -248,15 +277,15 @@ def decompose_task(goal: str, reading_level: str = "simple", max_steps: int = 3,
 
 
 def _looks_repetitive(new_steps: list, completed_steps: list, threshold: float = 0.55) -> bool:
-    """Rough word-overlap check: if the new steps share most of their words
-    with the already-completed ones, they're probably a reworded repeat
-    rather than genuinely new content."""
+    """Rough word-overlap check to detect and avoid repetitive step loops."""
     completed_words = set(" ".join(completed_steps).lower().split())
     if not completed_words:
         return False
 
     overlaps = []
     for step in new_steps:
+        if not isinstance(step, dict):
+            continue
         step_words = set(str(step.get("text", "")).lower().split())
         if not step_words:
             continue
