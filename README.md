@@ -1,255 +1,202 @@
 # The Smart Companion
 
-**An AI health and daily-living companion for neurodivergent and vulnerable users: it turns overwhelming goals into small wins, sees and hears, and helps in an emergency.**
+An AI assistant that turns overwhelming goals into small steps, for people who find big tasks hard to start (ADHD, anxiety, executive-function difficulties). It was then extended into everyday healthcare: medicines, readings, emergencies, finding a doctor, and a voice-first mode for blind and low-vision users.
 
-> Digital Twin Challenge 2026: Prototype & Code Submission
+It is a working prototype, not a finished product, and **not a medical device**. In an emergency call 108 or 112.
 
 ---
 
-## 1. Team Synora Details
+## 1. The problem
 
-| Name | Role | Email |
-|------|------|-------|
-| _Anwesha Mondal_ (Team Lead) | Frontent UI UX | _anweshamondal052004@gmail.com_ |
-| _Sandipan Dafadar_ | Speech-to-text, backend integration, AIML pipeline | _sandipandafadar04@gmail.com_ |
-| _Meghali Khan_ |Backend integration, vision, AI/LLM pipeline | _meghalikhan001@gmail.com_ |
+A goal like "clean my room" or "prepare for my exam" can feel like one giant mountain. Most to-do apps and chatbots make this worse by returning long lists and walls of text. The same difficulty carries over to health: remembering medicines, noting a blood pressure reading, finding a doctor, knowing what to do in an emergency. Many existing tools are too complicated, sit behind paid services, or ask for personal data.
 
-## 2. College / Incubator Information
+The Smart Companion gives **three small steps at a time**, understands typing, voice, photos, documents and live camera, and keeps the user's health data on their own device.
 
-- **Institution:** _Techno India University_
-- **Department:** _BTech CSE AIML(2023-27)_
-- **City, State:** _Kolkata, West Bengal, India_
+## 2. What it does
 
-## 3. Project Title
+**Task help**
+- Breaks a goal into 3 small steps with a time estimate; when the user presses Done it gives the next 3, until the task is finished.
+- Asks one clarifying question when a goal is too vague, instead of guessing.
+- Remembers the conversation: the user can say "explain step 2", "repeat the third step" or "what is the seed you mentioned, in Bengali" and the assistant answers from what it said earlier.
+- Conversations are sorted into topic chats (medical, cooking, exam and so on), each with its own memory.
+- Links and images under each answer (Wikipedia, Wikimedia Commons, web search). Streaks and badges, with no leaderboard.
 
-**The Smart Companion: A Privacy-First, Multimodal AI Assistant for Neurodivergent Users, Extended into Everyday Healthcare**
+**Voice and accessibility** (English, Hindi, Bengali)
+- On first open the app asks one question: *Blind or low vision* or *Standard*. The blind profile turns on voice mode.
+- Voice mode listens all the time, stops talking when the user speaks, and reads answers aloud. Spoken guided flows fill in medicines, conditions, how the user feels, the emergency card and the doctor report without touching a screen.
+- If the assistant mishears a medicine name it reads the name back letter by letter, lets the user spell it, and if that still fails opens a box to type the name or read it from a photo of the strip or prescription.
+- The speech language follows the language the user picked; it never switches by itself. Indian-English wording is used for speech recognition.
 
-## 4. Problem Statement
+**Health**
+- Health Log: blood pressure, glucose, symptoms, feelings, temperature, weight, pulse, oxygen; medicines and conditions. Everything is saved in the browser.
+- Medicine reminders and a short daily check-in. Voice logging ("BP 120 over 80", "I took my medicine").
+- A one-page PDF for the doctor with recent readings, medicines and conditions.
+- Emergency card (blood group, allergies, notes, contacts).
+- Prescription reading: upload a photo or PDF and review the medicines it found before saving.
+- Optional encrypted sync and backup file. The server only ever holds data it cannot read.
 
-People with ADHD and other neurodivergent conditions often struggle with **task initiation** and **decision paralysis**. A goal such as "clean my room" or "prepare for my exam" feels like one giant mountain. Standard to-do apps and chatbots make this worse by returning long lists and walls of text.
+**Safety**
+- Emergency wording (chest pain, cannot breathe, and similar) is caught by a plain list of phrases, not by an AI, so it is instant and predictable. It shows 108 and 104 and opens the SOS panel.
+- Thoughts of suicide or self-harm are handled separately: a calm message, the free helpline Tele-MANAS 14416, one-tap call or message to a contact the user saved, and 112 for immediate danger. The sentence is never sent to the AI. Nothing is ever sent by the app by itself.
+- SOS panel: live GPS, nearby hospitals, map routes, and a ready message for saved contacts that the user sends with one tap (SMS, WhatsApp or call).
+- Doctor directory built from OpenStreetMap, with WhatsApp appointment *requests* (not confirmed bookings).
 
-The same difficulty extends to **health management**. Remembering medicines, tracking blood pressure or glucose, finding a nearby doctor, and reacting calmly in an emergency are hard for these users. They are also hard for the elderly and for people in under-served areas. Existing tools are either:
+**Camera and documents**
+- Ask questions about a photo, or keep the laptop webcam or a phone (IP camera) open and ask several in a row. The guide tells the user which way to move the camera to find something.
+- PDF questions, including scanned pages.
 
-- too complex or overwhelming to use,
-- locked behind paid services, or
-- unsafe with personal data, because raw text is sent to AI services.
-
-**Need:** one simple, friendly, free and privacy-safe assistant that guides one small step at a time, understands voice, photos, documents and live video, and supports health and safety.
-
-## 5. Healthcare Use Case
-
-The healthcare layer turns Smart Companion from a productivity helper into a **personal health companion**:
-
-| Scenario | How Smart Companion helps |
-|---|---|
-| **Chronic condition self-management** (diabetes, hypertension) | Health Log records blood pressure, glucose and medicines in a low-effort screen designed for users who find forms overwhelming. |
-| **Medical emergency** (chest pain, breathing trouble) | A deterministic danger detector spots emergency wording and shows 108 (ambulance) and 104 (health helpline) guidance immediately, with no AI delay. |
-| **Needing help fast** | The SOS panel finds live GPS and the nearest hospitals, shows a map with drive, walk and transit routes, and prepares an alert message (location, map link and nearest hospital) for the user's saved contacts. The user sends it with one tap by SMS, WhatsApp or call. |
-| **Finding care locally** | A self-built, free **doctor directory** (SQLite, seeded from OpenStreetMap, verified-first ranking) with WhatsApp appointment *requests*. |
-| **Understanding medical documents** | Upload a prescription photo or a PDF report and ask questions in plain language, including scanned pages. |
-| **Medical conversations** | Medical chats are routed to a dedicated mode with a safety-focused note, and recent Health Log readings are used as context. |
-
-**Towards a personal health digital twin:** the Health Log and conversation memory form a lightweight, user-owned model of a person's health state (readings, medicines, history). Our roadmap builds on this with trend detection and personalised reminders. See *Future Scope*.
-
-> **Disclaimer:** Smart Companion is an assistive prototype. It is **not** a medical device and does not diagnose. In an emergency, call 108/112.
-
-## 6. Technical Stack
+## 3. Technology
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Python 3.10+, FastAPI, Pydantic, Uvicorn |
-| **Frontend** | HTML, CSS, vanilla JavaScript (Web Speech API, MediaRecorder, getUserMedia, Geolocation, localStorage) |
-| **LLM (text)** | `openai/gpt-oss-20b` via Groq API |
-| **Vision-language** | `qwen/qwen3.8-27b` (Alibaba Qwen) via Groq API |
-| **Speech-to-text** | `whisper-large-v3-turbo` via Groq API |
-| **Privacy** | spaCy `en_core_web_sm` named-entity recognition |
-| **Computer vision** | OpenCV (IP camera stream), YOLOv8n (Ultralytics, fixed-class detection) |
-| **Documents** | PyMuPDF (text extraction; scanned pages sent to the vision model) |
-| **Database** | SQLite (doctor directory, appointment requests, emergency alert log) |
-| **Maps and data** | OpenStreetMap (Overpass + Nominatim), Google Maps links, Wikipedia API, Wikimedia Commons API, DuckDuckGo search |
+| Backend | Python 3.10+, FastAPI, Pydantic, Uvicorn |
+| Frontend | HTML, CSS and plain JavaScript in 27 numbered files (Web Speech API, Web Crypto, getUserMedia, Geolocation, localStorage) |
+| Text model | `openai/gpt-oss-20b` through the Groq API |
+| Vision model | `qwen/qwen3.8-27b` through the Groq API (photos, camera frames, scanned pages, prescriptions) |
+| Speech to text | Whisper `whisper-large-v3` through the Groq API |
+| Read-aloud fallback | gTTS (only when the device has no Hindi or Bengali voice; the text goes to Google's speech service) |
+| Local vision | YOLOv8n (Ultralytics), loaded only when first used; OpenCV for the IP camera |
+| Documents | PyMuPDF |
+| Storage | Browser localStorage for personal data; SQLite on the server for the doctor directory, appointment requests and encrypted sync data |
+| Outside data | OpenStreetMap (Overpass, Nominatim), Wikipedia, Wikimedia Commons, DuckDuckGo search, Google Maps links |
 
-**Everything runs on free tiers and open data. No paid service is required.**
+Everything runs on free tiers and open data. No paid service is needed.
 
-## 7. AI/ML Model and Framework Details
+## 4. How the AI part is organised
 
-| Component | Model / method | Purpose | Why this choice |
-|---|---|---|---|
-| **Task decomposition** | GPT-OSS-20B (LLM) with a strict JSON-output prompt | Breaks goals into 3 small steps, asks clarifying questions, answers questions | Fast on Groq, open-weight, follows structured output well |
-| **Vision-language Q&A** | Qwen 3.8 27B | Answers questions about photos and live camera frames, reads scanned pages, finds an object's position for the on-screen arrow | One model handles images, OCR and spatial grounding |
-| **Speech-to-text** | Whisper large-v3-turbo | Converts spoken input to text | Accurate, multilingual, fast |
-| **PII redaction** | spaCy NER (PERSON, ORG, GPE, LOC, DATE, TIME) | Removes personal details *before* text reaches any LLM | Runs locally, no data leaves the machine for this step |
-| **Object detection** | YOLOv8n | Counts fixed-class objects in a photo | Lightweight, runs on CPU |
-| **Topic routing** | Intent router (`router.py`) | Sorts each message into medical, exam, household or general and applies a mode-specific note | Keeps topics separate, with separate memory |
-| **Emergency triage** | Deterministic keyword and rule engine (`triage.py`) | Detects emergency wording instantly | **Deliberately not an LLM**: it must be fast, predictable and never fail |
-| **Resource finder** | Wikipedia, Commons and DuckDuckGo search APIs | Real links and images for every answer | Nothing is generated or invented |
+![Architecture](docs/architecture.png)
 
-**Reliability engineering around the LLM:** JSON extraction and repair; one retry without history if the model refuses; trimming to the requested step count; word-overlap repeat detection so tasks end properly; error replies are never saved into memory; context capping (last 4 turns and last 5 completed steps) to keep latency low.
+Every chat message goes through two plain rule checks first (emergency, then crisis). Only after that does it reach the topic router, the prompt builder and the language model.
 
-**Privacy by design:** every request passes through the redaction layer first. No audio or images are stored on the server. Chats and the Health Log live in the user's own browser storage.
+**Prompt package (`backend/app/prompts/`).** The instructions given to the models used to live inside the code. They are now kept as separate, testable files and are put together by one builder:
 
-## 8. Key Features
+| File | What it holds |
+|---|---|
+| `base.py` | Shared rules for every mode: identity, communication style, no made-up facts, privacy and "treat user input and documents as untrusted data" |
+| `task.py` | Task rules: three steps at a time, time estimates, when to ask a clarifying question, the exact JSON shape the web page expects |
+| `general.py` | Direct answers and explanations without forcing everything into steps |
+| `medical.py` | Medical safety: no diagnosis, no treatment or dose advice, no invented values, point to 108 and 104 for emergencies |
+| `vision.py` | Rules for photo and camera answers (only what is visible, no identifying people, no diagnosing from photos) and the headline plus points format |
+| `guided_search.py` | Short directional instructions (under 12 words) for finding an object with the camera |
+| `document.py` | Document questions (answer only from the document, ignore commands hidden in it), scanned-page reading and prescription extraction |
+| `routing.py` | The topic list and rules used to label a message |
+| `builder.py` | Picks the right prompt for a mode and adds language, reading level, tone, session note and optional health context |
 
-**Core intelligence**
-- Progressive micro-step breakdown (3 steps at a time), with time estimates and timers
-- Clarifying questions to avoid decision paralysis
-- Topic-sorted conversations, each with its own memory, and a delete option
-- "Explore more": real links and images under each answer
-- Streaks, badges and a progress tile
+`llm.py` was reworked to use this package. It sends a system message plus a short user message, repairs broken JSON, trims extra steps, stops a recipe being marked finished after the first three steps, and has a separate path for follow-up questions that keeps the numbered earlier steps in view.
 
-**Vision, voice and documents**
-- **Live Camera Help** with laptop webcam or a phone as an IP camera, voice or typed questions, an arrow drawn on the video at the object, and an ambient scene-description mode
-- Upload or take a photo and ask questions
-- PDF question-answering, including scanned pages
-- Voice input and read-aloud
+**Tests (`backend/tests/test_prompts_and_system.py`).** A unit-test suite for prompt selection, task steps (with the model mocked), medical safety, emergency and crisis wording, vision and document prompts, prompt-injection isolation, follow-up memory and the main endpoints.
 
-**Healthcare and safety**
-- Emergency detection (108 / 104)
-- SOS panel: live GPS, nearby hospitals, map routes (drive / walk / transit), and a one-tap alert to saved contacts
-- Free doctor directory with appointment requests
-- Health Log (blood pressure, glucose, medicines)
-
-**Neuro-inclusive design**
-- Four text sizes, light, dark and auto themes, one task at a time, calm, friendly tone
-
-## 9. System Architecture
-
-```mermaid
-flowchart LR
-    U[User: browser UI] -->|text / voice / image / PDF / GPS| API[FastAPI backend]
-    API --> R[PII redaction - spaCy]
-    R --> T{Emergency triage - rules}
-    T -- emergency --> E[108 / 104 guidance + SOS]
-    T -- normal --> RT[Topic router]
-    RT --> LLM[GPT-OSS-20B on Groq]
-    API --> V[Qwen 3.8 vision on Groq]
-    API --> W[Whisper STT on Groq]
-    API --> RES[resources.py: Wikipedia / Commons / DDG]
-    API --> DIR[Doctor directory - SQLite + OSM]
-    LLM --> API
-    API -->|JSON steps| U
-```
-
-### Endpoints (26)
+## 5. Endpoints (28)
 
 | Area | Endpoints |
 |---|---|
-| Core | `GET /health`, `POST /redact`, `POST /decompose-task`, `POST /classify-session`, `POST /resources` |
-| Voice | `POST /transcribe` |
-| Vision | `POST /detect-objects`, `POST /caption-image`, `POST /guide-search` |
-| Documents | `POST /upload-document`, `POST /ask-document` |
+| Core | `GET /health`, `POST /decompose-task`, `POST /classify-session`, `POST /resources` |
+| Voice | `POST /transcribe`, `POST /tts` |
+| Vision and documents | `POST /detect-objects`, `POST /caption-image`, `POST /guide-search`, `POST /upload-document`, `POST /ask-document`, `POST /extract-prescription` |
 | IP camera | `GET /camera/status`, `POST /camera/set-url`, `GET /camera/stream`, `GET /camera/frame`, `POST /camera/ask`, `GET /camera/detect-objects`, `POST /camera/guide-search` |
-| Healthcare | `POST /nearby-healthcare`, `GET /directory/search`, `GET /directory/geocode`, `POST /directory/doctors`, `POST /directory/doctors/{id}/verify`, `POST /directory/appointments`, `POST /directory/alert`, `GET /directory/alerts` |
+| Healthcare | `POST /nearby-healthcare`, `GET /directory/search`, `GET /directory/geocode`, `POST /directory/doctors`, `POST /directory/doctors/{id}/verify`, `POST /directory/appointments` |
+| Sync | `GET`, `PUT`, `DELETE /sync/{id}` (encrypted data only) |
 
-Interactive API docs are available at `http://127.0.0.1:8000/docs` after starting the server.
+Interactive docs are at `http://127.0.0.1:8000/docs` once the server is running.
 
-## 10. Project Structure
+## 6. Project structure
 
 ```
 smart-companion/
 ├── backend/
-│   ├── app/            # app.py, llm.py, models.py, redact.py, router.py, triage.py,
-│   │                   # resources.py, doctor_directory.py, nearbydoc.py
-│   ├── visual/         # vision.py, caption.py, guide.py, ip_camera.py, pdfqa.py
-│   ├── speech_to_text/ # speech.py
-│   └── .env            # API keys (not committed)
-├── frontend/           # index.html, app.js, style.css
-├── docs/               # Architecture diagram (PDF), presentation (PPT/PDF), report
-├── LICENSE
+│   ├── app/             # app.py, llm.py, models.py, router.py, triage.py, resources.py,
+│   │   │                # doctor_directory.py, nearbydoc.py, prescription.py, sync.py, tts.py
+│   │   └── prompts/     # base, task, general, medical, vision, guided_search, document, routing, builder
+│   ├── visual/          # vision.py, caption.py, guide.py, ip_camera.py, pdfqa.py
+│   ├── speech_to_text/  # speech.py
+│   ├── tests/           # test_prompts_and_system.py
+│   └── .env             # API key (not committed)
+├── frontend/            # index.html, style.css, patientui.css, splash.js
+│   └── js/              # 01 ... 27, loaded in order (chat, camera, SOS, health log, voice, crisis support)
+├── docs/                # architecture diagram, report
 └── README.md
 ```
 
-## 11. Installation and Run
+## 7. Install and run
 
 ```bash
-# 1. Clone
+# 1. Get the code
 git clone https://github.com/<your-username>/<repo-name>.git
 cd <repo-name>/backend
 
-# 2. Environment
+# 2. Python environment
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+pip install gTTS --no-deps        # read-aloud fallback; installed on its own on purpose
 
 # 3. API key (free at console.groq.com)
 echo "GROQ_API_KEY=your_key_here" > .env
 # optional: CAMERA_URL=http://<phone-ip>:8080/video   (IP Webcam app)
 
-# 4. Start backend (run from the backend/ folder)
-uvicorn app.app:app --reload --port 8000
+# 4. Start the backend (from the backend/ folder; do not use --reload if you want a quick start)
+uvicorn app.app:app --port 8000
 
-# 5. Start frontend (new terminal)
+# 5. Start the page (new terminal)
 cd ../frontend
 python -m http.server 5500
 # open http://127.0.0.1:5500
 ```
 
-On first use of the doctor directory, the app seeds nearby facilities from OpenStreetMap (internet needed once per area).
+**Run the tests:** from `backend/`, `python -m unittest tests.test_prompts_and_system` (the model calls are mocked).
 
-## 12. Demo Video
+**Share a demo link (optional).** Set `SITE_DIR` to the folder that holds `index.html` so one server serves both the page and the backend, then use a free Cloudflare quick tunnel:
 
-**Unlisted YouTube link (15-20 min demo):** _[(https://youtu.be/E_0aLTRpUOE)]_
+```powershell
+$env:SITE_DIR = "C:\path\to\frontend"
+uvicorn app.app:app --port 8000
+# second window:
+cloudflared tunnel --url http://localhost:8000
+```
 
-The video covers the problem, a full live demo (task breakdown, voice, live camera, PDF Q&A, SOS, doctor directory, Health Log), the architecture and the AI pipeline, and the roadmap.
+The link changes each time and works only while the laptop is on. It is meant for demos, not for permanent hosting.
 
-## 13. Open-Source License Details
+## 8. Privacy: what stays and what leaves the device
 
-This project is released under the **MIT License** (see [`LICENSE`](LICENSE)).
+- Chats, the Health Log, medicines, contacts and the emergency card are stored in the browser on the user's own device.
+- Text typed or spoken to the assistant is sent to the hosted models on Groq **as written**. The project first used spaCy to hide names, places and dates, and then removed it: the model is trained mostly on Western text and missed many Indian names, so it gave false comfort and also removed harmless words such as "30 minutes". Users should not type ID numbers or full addresses into the chat.
+- Audio goes to Whisper for transcription and photos go to the vision model. Neither is stored on the server.
+- The read-aloud fallback (gTTS) sends the text it reads to Google's speech service, but only on devices that have no Hindi or Bengali voice.
+- Emergency contacts and the user's location are **not** sent to the project server. (An earlier version logged SOS alerts on the server; this was removed.)
+- Sync is optional. The data is encrypted in the browser with a key made from the user's Sync key, so the server stores only data it cannot read.
+- Self-harm wording is checked on the device and on the server by a word list. That sentence is not sent to the AI or saved in the chat.
 
-Third-party components and data keep their own licenses:
+## 9. Known limits
+
+- **Not a medical device.** The assistant does not diagnose, explain named medicines or advise on doses. The urgent-range numbers used in the Health Log have not been confirmed by a doctor.
+- **Language review.** The Hindi and Bengali wording (voice prompts, emergency and crisis messages, emergency phrase lists) was drafted with AI help and has not been checked by a native speaker.
+- **Not tested on real devices.** Voice, the always-listening mode and the blind profile have been tested with automated browser checks and stand-in audio. They have not yet been tried with a screen reader (such as NVDA), a real phone, or blind users. Browsers also need one tap or key press before they allow speech or the microphone.
+- **Speech recognition makes mistakes**, especially with medicine names and Indian names. That is why every medicine name is read back and confirmed.
+- **Crisis and emergency detection is a word list.** It will miss phrases that are not on the list. The helpline number (Tele-MANAS 14416) should be re-checked before any real use.
+- **Doctor data** comes from OpenStreetMap, so coverage and phone numbers vary by area. Appointments are requests sent through WhatsApp, not bookings.
+- **Evaluation is incomplete.** There is no response-time benchmark and no user study yet.
+- The free Groq tier has rate limits, so very busy periods can slow or fail a request.
+- Backend start-up was slow because heavy libraries loaded at start; they now load when first needed, but the improvement has not been measured on every machine.
+
+## 10. Future work
+
+- A real-device and screen-reader test round, and a user study with a few people.
+- A native-speaker review of the Hindi and Bengali text.
+- A pass for deaf and hard-of-hearing users (every spoken alert also shown as text, visual reminder cues).
+- A response-time benchmark and a larger set of tests for the AI part.
+- A simple user profile so the assistant adapts to each person, and a dyslexia-friendly font option.
+- A name-detection model trained on Indian names, to bring redaction back in a form that works.
+- Caregiver features, an on-screen pointer in Live Camera Help, a mobile app, and wider doctor coverage.
+
+## 11. Licenses
+
+This project is released under the MIT License (see `LICENSE`). Third-party parts keep their own licenses:
 
 | Component | License |
 |---|---|
-| FastAPI, Pydantic, spaCy, OpenCV (4.5+), PyMuPDF* | MIT / BSD / Apache-2.0 / AGPL* |
-| Ultralytics YOLOv8 | AGPL-3.0 |
-| OpenStreetMap data | ODbL: "© OpenStreetMap contributors" |
+| FastAPI, Pydantic, OpenCV | MIT / BSD / Apache-2.0 |
+| Ultralytics YOLOv8, PyMuPDF | AGPL-3.0 (used as libraries in this open-source prototype) |
+| OpenStreetMap data | ODbL, "© OpenStreetMap contributors" |
 | Wikipedia text | CC BY-SA |
 | Wikimedia Commons images | Individual licenses, linked from each image |
-| Groq-hosted models (GPT-OSS, Qwen, Whisper) | Used through the Groq API under the respective model licenses |
-
-\* PyMuPDF is AGPL-3.0 and YOLOv8 (Ultralytics) is AGPL-3.0. They are used as libraries for this open-source prototype.
-
-## 14. Presentation and Architecture Diagram
- 
-![Architecture diagram](docs/architecture.png)
- 
-All files below are hosted on Google Drive with access set to **"Anyone with the link: Viewer"**, so they open with a single click and need no login or permission request.
- 
-| Item | Format | Link |
-|---|---|---|
-| Architecture diagram | PDF | [Open architecture diagram](https://drive.google.com/file/d/1xiUcNMEqtVT41IFWxy2wj0AoFzB8CmhN/view?usp=sharing) |
-| Presentation (project details and outcomes) | PDF / PPT | [Open presentation](https://drive.google.com/file/d/1LYUC2jc42Ey0EUwjk-3pAEbNMddTUrnZ/view?usp=sharing) |
- 
-Backup copies of the architecture diagram are also in this repository
-
-
-## 15. Impact and Outcomes
-
-- **26 API endpoints** and **3 AI model families** working together in one app
-- **Zero paid services**: runs on free tiers and open data
-- **Privacy-first**: personal details are removed before any AI call
-- **Safe by design**: emergency detection is rule-based, so it is instant and predictable, and alerts are always user-initiated
-- **Accessible**: text-size control, one task at a time, voice in and out, minimal typing
-
-## 16. Limitations (Honest Notes)
-
-- Doctor data comes from OpenStreetMap, so coverage and phone numbers vary by area. Appointment *requests* open WhatsApp and are not confirmed bookings.
-- SOS prepares the message and the user taps to send it. We do not send silent automatic alerts.
-- The LLM can make mistakes. Health answers are informational only.
-- Free API tiers have rate limits.
-
-## 17. Future Scope
-
-- Daily wellness reminders (medicines, readings) and trend detection on Health Log data, extending towards a fuller personal health digital twin
-- Voice-only mode for blind users and a visual, text-first mode for deaf users
-- Caregiver features and medicine-photo recognition
-- A crisis-support flow that shows helplines first and offers a one-tap contact the user chooses
-- Native mobile app, local-language support, and wider verified doctor coverage
-
-## 18. Acknowledgements
-
-Google, Youtube, Groq, OpenStreetMap contributors, Wikimedia Foundation, and the open-source community.
-
----
-
-*Built by Synora for the Digital Twin Challenge 2026.*
+| Groq-hosted models (GPT-OSS, Qwen, Whisper) | Used through the Groq API under the models' own licenses |
