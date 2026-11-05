@@ -5,10 +5,6 @@ class TextInput(BaseModel):
     text: str
 
 
-class RedactOutput(BaseModel):
-    redacted_text: str
-
-
 class ChatTurn(BaseModel):
     role: str  # "user" or "assistant"
     content: str
@@ -24,6 +20,7 @@ class TaskRequest(BaseModel):
     session_note: str = ""
     language: str = "en"          # "en" | "hi" | "bn"
     health_context: str = ""      # the user's own Health Log summary (medical chats only)
+    followup: bool = False        # the page thinks this is a question about the earlier steps
 
 
 class TaskResponse(BaseModel):
@@ -32,6 +29,7 @@ class TaskResponse(BaseModel):
     was_error: bool = False
     is_emergency: bool = False
     is_crisis: bool = False
+    is_followup: bool = False
 
 
 class TranscribeResponse(BaseModel):

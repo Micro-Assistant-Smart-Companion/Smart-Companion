@@ -40,21 +40,54 @@ def extract_json(raw_text: str) -> Optional[dict]:
     return None
 
 
+def _history_text(history: List[Dict[str, str]], turns: int = 8, per_turn: int = 1200, total: int = 4500) -> str:
+    """The recent conversation, newest last. Assistant steps already carry their numbers ("Step 2: ...")."""
+    rows = []
+    for t in (history or [])[-turns:]:
+        who = "User" if t.get("role") == "user" else "Assistant"
+        rows.append(f"{who}: {str(t.get('content', ''))[:per_turn]}")
+    text = "\n".join(rows)
+    return text[-total:] if len(text) > total else text
+
+
+def build_followup_user_message(goal: str, max_steps: int, history: List[Dict[str, str]]) -> str:
+    """A question about what was already said ("explain step 2", "the seed you mentioned, in Bengali")."""
+    return (
+        f"Here is the conversation so far. The steps you gave earlier are numbered (\"Step 2: ...\").\n"
+        f"{_history_text(history)}\n\n"
+        f"The user is now asking a FOLLOW-UP about what you already said. Answer it from the conversation above:\n"
+        f'- If they name a step ("step 2", "the third step", "second one"), talk about exactly that step.\n'
+        f"- If they ask you to repeat a step, say it again in simple words.\n"
+        f'- If they ask about a word, ingredient or idea you mentioned (for example "the seed you mentioned"), '
+        f"name it and explain it simply, using that step.\n"
+        f'- If they ask for a particular language ("in Bengali", "in Hindi"), write the answer in that language '
+        f"(Hindi in Devanagari, Bengali in Bengali script). Otherwise keep the language you were told to use.\n"
+        f'- Do NOT give new task steps, do NOT start the task over, and do NOT include a "time" field.\n'
+        f"- Keep it short: at most {max_steps} small parts, one point per part.\n\n"
+        f'Respond with ONLY raw JSON in this exact shape: '
+        f'{{"steps": [{{"step": 1, "text": "..."}}], "is_final": true, "followup": true}}\n\n'
+        f'Follow-up: "{goal}"'
+    )
+
+
 def build_task_user_message(
     goal: str,
     max_steps: int = 3,
     completed_steps: Optional[List[str]] = None,
     history: Optional[List[Dict[str, str]]] = None,
+    followup: bool = False,
 ) -> str:
     """Build the dynamic user-turn message containing goal, history, and progress state."""
     history = history or []
     completed_steps = completed_steps or []
+    if followup and history:
+        return build_followup_user_message(goal, max_steps, history)
 
     history_block = ""
     if history:
-        turns = "\n".join(f"{t['role'].capitalize()}: {t['content']}" for t in history[-4:])
+        turns = _history_text(history, turns=6)
         history_block = (
-            f"Conversation so far:\n{turns}\n\n"
+            f'Conversation so far (earlier steps are numbered, like "Step 2: ..."):\n{turns}\n\n'
             f"If the new input below is a follow-up question about something already said above "
             f'(e.g. "what did you mean by step 2", "why do we do that", "can you explain that more") — '
             f'answer it directly using that context in plain terms, and set "is_final" to true.\n'
@@ -107,6 +140,7 @@ def build_prompt(
     history: Optional[List[Dict[str, str]]] = None,
     session_note: str = "",
     language: str = "en",
+    followup: bool = False,
 ) -> str:
     """Compose the full monolithic prompt string for backward compatibility."""
     system_prompt = build_system_prompt(
@@ -123,6 +157,7 @@ def build_prompt(
         max_steps=max_steps,
         completed_steps=completed_steps,
         history=history,
+        followup=followup,
     )
     return f"{system_prompt}\n\n---\n\n{user_prompt}"
 
@@ -175,6 +210,7 @@ def decompose_task(
     history: Optional[List[Dict[str, str]]] = None,
     session_note: str = "",
     language: str = "en",
+    followup: bool = False,
 ) -> dict:
     """Decompose a goal or answer a question using modular system prompts."""
     completed_steps = completed_steps or []
@@ -194,6 +230,7 @@ def decompose_task(
         max_steps=max_steps,
         completed_steps=completed_steps,
         history=history,
+        followup=followup,
     )
     messages = [
         {"role": "system", "content": system_prompt},
@@ -218,7 +255,8 @@ def decompose_task(
             goal=goal,
             max_steps=max_steps,
             completed_steps=completed_steps,
-            history=None,
+            history=history if followup else None,      # a follow-up cannot be answered without the history
+            followup=followup,
         )
         clean_messages = [
             {"role": "system", "content": system_prompt},
@@ -239,6 +277,9 @@ def decompose_task(
         }
 
     steps = parsed.get("steps", [])
+    parsed["is_followup"] = bool(followup or parsed.get("followup"))
+    if parsed["is_followup"]:
+        parsed["is_final"] = True            # an answer to a question never shows the "next steps" button
 
     # Validate and normalize step format
     valid_steps = []
@@ -259,7 +300,8 @@ def decompose_task(
 
     # First batch with duration estimates shouldn't prematurely mark finite multi-stage task as finished
     if (
-        not completed_steps
+        not parsed["is_followup"]
+        and not completed_steps
         and len(steps) >= max_steps
         and parsed.get("is_final")
         and any(isinstance(x, dict) and x.get("time") for x in steps)
@@ -268,7 +310,7 @@ def decompose_task(
         print("[fix] first batch was marked final although it is a task with time per step - keeping open")
         parsed["is_final"] = False
 
-    if completed_steps and steps and _looks_repetitive(steps, completed_steps):
+    if not parsed["is_followup"] and completed_steps and steps and _looks_repetitive(steps, completed_steps):
         print("[warning] New steps look like a repeat of earlier ones - marking task complete instead")
         parsed["steps"] = []
         parsed["is_final"] = True

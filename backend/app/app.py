@@ -5,7 +5,6 @@ import asyncio
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import json
-from fastapi.staticfiles import StaticFiles
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
  
@@ -15,7 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
 from app.models import (
     TextInput,
-    RedactOutput,
     TaskRequest,
     TaskResponse,
     TranscribeResponse,
@@ -26,15 +24,43 @@ from app.models import (
     DocumentUploadResponse, DocumentQuestionRequest, DocumentAnswerResponse, NearbyRequest
 )
 # pyrefly: ignore [missing-import]
-from app.redact import redact_text
 # pyrefly: ignore [missing-import]
 from app.llm import decompose_task
-from visual.vision import detect_objects_summary
-from visual.caption import answer_about_image
-from visual.guide import get_guidance
 from visual.ip_camera import IPCameraStream
 from speech_to_text.speech import transcribe_detect
-from visual.pdfqa import extract_pages, store_document, answer_question_about_document, prefetch_pending_pages
+
+
+# The heavy libraries (YOLO / torch for objects, the PDF reader, the vision helpers) used to be loaded while the
+# server was starting, which is what made the loading screen last so long. They are now loaded the first time a
+# feature needs them (and warmed up quietly in the background, see _warm_up below).
+def detect_objects_summary(*a, **k):
+    from visual.vision import detect_objects_summary as f
+    return f(*a, **k)
+
+def answer_about_image(*a, **k):
+    from visual.caption import answer_about_image as f
+    return f(*a, **k)
+
+def get_guidance(*a, **k):
+    from visual.guide import get_guidance as f
+    return f(*a, **k)
+
+def extract_pages(*a, **k):
+    from visual.pdfqa import extract_pages as f
+    return f(*a, **k)
+
+def store_document(*a, **k):
+    from visual.pdfqa import store_document as f
+    return f(*a, **k)
+
+def answer_question_about_document(*a, **k):
+    from visual.pdfqa import answer_question_about_document as f
+    return f(*a, **k)
+
+def prefetch_pending_pages(*a, **k):
+    from visual.pdfqa import prefetch_pending_pages as f
+    return f(*a, **k)
+
 from app.router import classify_intent, build_agent_system_note
 from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
@@ -60,6 +86,20 @@ CAMERA_URL = os.getenv("CAMERA_URL", "")   # empty = no camera until the user se
 camera = IPCameraStream(CAMERA_URL)
 camera.start()
 
+@app.on_event("startup")
+def _warm_up():
+    """Load the slow things in the background, after the server already answers, so the first use is quick."""
+    import threading
+    def go():
+        time.sleep(3)
+        for name in ("visual.vision", "visual.pdfqa"):
+            try:
+                __import__(name)
+            except Exception as e:
+                print(f"[warm-up] {name} not loaded: {e}")
+    threading.Thread(target=go, daemon=True).start()
+
+
 @app.get("/health")
 def health():
     return {"status": "OK"}
@@ -71,15 +111,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
  
-@app.post("/redact", response_model=RedactOutput)
-def redact_pii(input: TextInput):
-    redacted = redact_text(input.text)
-    return {"redacted_text": redacted}
-
 @app.post("/decompose-task", response_model=TaskResponse)
 def decompose(req: TaskRequest):
     lang = req.language if req.language in ("en", "hi", "bn") else "en"
-    safe_goal = redact_text(req.goal)
+    safe_goal = req.goal
 
     # Thoughts of suicide or self-harm: calm words and helplines, never sent to the AI. (The page checks first
     # as well; this is the safety net.) Looks ONLY at what the user just said.
@@ -104,7 +139,7 @@ def decompose(req: TaskRequest):
     note = req.session_note
     if req.health_context.strip():
         note += (" The user's own notes follow, for background only. Never diagnose from them or "
-                 "explain any medicine in them: " + redact_text(req.health_context)[:600])
+                 "explain any medicine in them: " + req.health_context[:600])
 
     result = decompose_task(
         goal=safe_goal,
@@ -115,6 +150,7 @@ def decompose(req: TaskRequest):
         history=[t.model_dump() for t in req.history],
         session_note=note,
         language=lang,
+        followup=req.followup,
     )
     return result
 
@@ -159,7 +195,7 @@ async def detect_objects(file: UploadFile = File(...)):
 @app.post("/caption-image", response_model=CaptionResponse)
 async def caption_image(file: UploadFile = File(...), question: str = Form(...), history: str = Form(default="[]")):
     image_bytes = await file.read()
-    safe_question = redact_text(question)  # in case the question itself contains personal info
+    safe_question = question
     try:
         history_list = json.loads(history)
     except (ValueError, TypeError):
@@ -169,7 +205,7 @@ async def caption_image(file: UploadFile = File(...), question: str = Form(...),
 @app.post("/guide-search", response_model=GuidanceResponse)
 async def guide_search(file: UploadFile = File(...), target: str = Form(...)):
     image_bytes = await file.read()
-    safe_target = redact_text(target)
+    safe_target = target
     return get_guidance(image_bytes, safe_target)
 
 # --- IP Camera Endpoints integrated with frontend settings ---
@@ -191,7 +227,7 @@ async def upload_document(background_tasks: BackgroundTasks, file: UploadFile = 
 
 @app.post("/ask-document", response_model=DocumentAnswerResponse)
 def ask_document(req: DocumentQuestionRequest):
-    safe_question = redact_text(req.question)
+    safe_question = req.question
     return answer_question_about_document(req.document_id, safe_question)
 
 @app.get("/camera/status", response_model=CameraStatusResponse)
@@ -241,7 +277,7 @@ def ask_ip_camera(question: str = Form(...), history: str = Form(default="[]")):
     if not frame_bytes:
         return {"error": "Camera frame not available. Please check that your IP Webcam stream is active."}
  
-    safe_question = redact_text(question)
+    safe_question = question
     try:
         history_list = json.loads(history)
     except (ValueError, TypeError):
@@ -260,7 +296,7 @@ def guide_search_ip_camera(target: str = Form(...)):
     frame_bytes = camera.get_latest_jpeg()
     if not frame_bytes:
         return {"found": False, "guidance": "Camera frame not available. Check your IP stream."}
-    safe_target = redact_text(target)
+    safe_target = target
     return get_guidance(frame_bytes, safe_target)
 
 @app.post("/classify-session")
@@ -275,6 +311,10 @@ def nearby_healthcare(req: NearbyRequest):
 
 @app.post("/resources")
 def resources(input: TextInput):
-    return get_resources(redact_text(input.text))
+    return get_resources(input.text)
 
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+# serves both the page and the backend. Set SITE_DIR to the folder that holds index.html. Keep this at the very end.
+SITE_DIR = os.getenv("SITE_DIR")
+if SITE_DIR and os.path.isdir(SITE_DIR):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=SITE_DIR, html=True), name="site")

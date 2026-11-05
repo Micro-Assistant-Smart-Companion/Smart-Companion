@@ -1,5 +1,3 @@
-// light/dark theme, saved chat sessions
-
 const THEME_KEY = 'companion_theme';
 let currentThemeSetting = localStorage.getItem(THEME_KEY) || 'dark';
 
@@ -289,7 +287,23 @@ function switchSession(label) {
   toggleSidebar(false);
 }
 
+// "explain step 2", "what did you mean by that", "repeat the third step", "the seed you mentioned, in Bengali" ...
+// A question about what was just said must stay in the SAME chat: switching chats here is what made the assistant forget.
+const FU_NUM = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|first|second|third|fourth|fifth|sixth|last|previous)';
+const FU_RE = [
+  new RegExp(`\\b(step|steps|point|part)\\s*(number|no\\.?|#)?\\s*${FU_NUM}\\b|\\b${FU_NUM}\\s+(step|point|part|one)\\b|\\bnumber\\s+${FU_NUM}\\b`, 'i'),
+  /what do you mean|what did you mean|you (said|mentioned|told)|(mentioned|said) (in|above|earlier|before)|\b(repeat|say)\b.*\b(that|again|step)\b|explain (that|this|it|more|again)|\bwhat (is|was|does) (that|this|it)\b|can you (explain|repeat|tell me more)|\bmore (about|on) (that|this|it)\b/i,
+  /(स्टेप|चरण|कदम)\s*(नंबर|नम्बर)?\s*(\d+|एक|दो|तीन|चार|पाँच|पांच|छह|सात|आठ|नौ|दस)|(पहले|दूसरे|तीसरे|चौथे|पाँचवें|पांचवें|आखिरी|पिछले)\s*(स्टेप|चरण|कदम)|दोहराओ|दोहराइए|(फिर|दोबारा) से? ?(बोलो|बताओ|बताइए)|क्या मतलब|आपने (कहा|बताया|बोला)|इसे समझा/,
+  /(ধাপ|স্টেপ)\s*(নম্বর|নং)?\s*(\d+|[০-৯]+|এক|দুই|তিন|চার|পাঁচ|ছয়|সাত|আট|নয়|দশ)|(প্রথম|দ্বিতীয়|তৃতীয়|চতুর্থ|পঞ্চম|শেষ|আগের)\s*(ধাপ|স্টেপ)|আবার (বলো|বলুন|বল)|মানে কী|মানে কি|আপনি (বলেছেন|বললেন|বলেছিলেন)|এটা বুঝিয়ে|এটি বুঝিয়ে/
+];
+function isFollowUp(text) {
+  if (!Array.isArray(history) || !history.some(t => t && t.role === 'assistant')) return false;   // nothing was said yet
+  const t = String(text || '').normalize('NFC');
+  return t.length <= 300 && FU_RE.some(r => r.test(t));
+}
+
 async function classifyAndSwitch(text) {
+  if (isFollowUp(text)) return;
   let label = currentLabel;
   let note = '';
   try {
