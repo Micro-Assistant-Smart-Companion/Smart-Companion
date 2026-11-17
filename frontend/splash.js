@@ -1,12 +1,18 @@
 (function () {
   'use strict';
-  var host = ''; 
+
+  // Same address rule as the app itself (js/01-setup-and-background.js), plus the plain local address as a second try
+  var hosts = [];
+  try { var saved = localStorage.getItem('companion_api_host'); if (saved) hosts.push(saved); } catch (e) {}
+  if (location.protocol === 'https:') hosts.push(location.origin);
+  else if (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') hosts.push('http://' + location.hostname + ':8000');
+  hosts.push('http://127.0.0.1:8000', 'http://localhost:8000');
+  var host = hosts[0];
 
   var SHOW_AFTER_MS = 700;        // do not flash the screen if the backend is already up
   var POLL_MS = 1500;
-  var SLOW_AFTER_S = 240;         // after 4 minutes, offer "try again" and "open anyway"
+  var SLOW_AFTER_S = 30;          // after 30 seconds, offer "try again" and "open anyway"
 
-  window.__pfPending = true;      
   var start = Date.now(), root = null, timer = null, tipTimer = null, done = false, slowShown = false, tipIx = 0;
 
   var TIPS = [
@@ -92,7 +98,7 @@
   }
 
   function finish(ok) {
-    if (done) return; done = true; window.__pfPending = false;
+    if (done) return; done = true;
     clearInterval(timer); clearInterval(tipTimer);
     try { window.dispatchEvent(new CustomEvent('pf:backend-ready', { detail: { ok: ok } })); } catch (e) {}
     if (!root) return;
@@ -104,15 +110,15 @@
     setTimeout(function () { root.classList.add('out'); setTimeout(function () { root && root.remove(); }, 500); }, ok ? 700 : 0);
   }
 
+  var hostIx = 0;
   function check() {
     if (done) return;
     var ctrl = window.AbortController ? new AbortController() : null;
-    var to = setTimeout(function () { ctrl && ctrl.abort(); }, 4000);
-    
-    // Use relative path '/health' so it respects HTTPS and routes correctly through the tunnel
-    fetch(host + '/health', { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
-      .then(function (r) { clearTimeout(to); if (r.ok) finish(true); else again(); })
-      .catch(function () { clearTimeout(to); again(); });
+    var to = setTimeout(function () { ctrl && ctrl.abort(); }, 10000);
+    // no-cors: we only want to know that the server answered, so a CORS or status quirk cannot keep the screen up
+    fetch(hosts[hostIx % hosts.length] + '/health', { cache: 'no-store', mode: 'no-cors', signal: ctrl ? ctrl.signal : undefined })
+      .then(function () { clearTimeout(to); finish(true); })
+      .catch(function () { clearTimeout(to); hostIx++; again(); });
   }
   function again() { if (!done) setTimeout(check, POLL_MS); }
 
