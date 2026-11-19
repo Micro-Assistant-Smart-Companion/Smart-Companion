@@ -17,6 +17,8 @@ from .document import (
     DOCUMENT_QA_SYSTEM_PROMPT,
     PRESCRIPTION_SYSTEM_PROMPT,
     SCANNED_PAGE_OCR_RULES,
+    MEDICAL_REPORT_SYSTEM_PROMPT,
+    MEDICINE_PACKAGING_SYSTEM_PROMPT,
 )
 from .routing import ROUTING_RULES
 
@@ -31,6 +33,8 @@ SUPPORTED_MODES = {
     "document": DOCUMENT_QA_SYSTEM_PROMPT,
     "scanned_page": SCANNED_PAGE_OCR_RULES,
     "prescription": PRESCRIPTION_SYSTEM_PROMPT,
+    "medical_report": MEDICAL_REPORT_SYSTEM_PROMPT,
+    "medicine_packaging": MEDICINE_PACKAGING_SYSTEM_PROMPT,
     "routing": ROUTING_RULES,
 }
 

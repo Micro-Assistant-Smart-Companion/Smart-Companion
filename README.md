@@ -32,7 +32,8 @@ The Smart Companion gives **three small steps at a time**, understands typing, v
 - Medicine reminders and a short daily check-in. Voice logging ("BP 120 over 80", "I took my medicine").
 - A one-page PDF for the doctor with recent readings, medicines and conditions.
 - Emergency card (blood group, allergies, notes, contacts).
-- Prescription reading: upload a photo or PDF and review the medicines it found before saving.
+- Prescription & lab report reading: upload a prescription photo or PDF, extract medicine name, strength, dosage, frequency, duration, and instructions with uncertainty indicators, and review each item before saving; or upload medical lab reports (CBC, lipid, liver, renal panels) to extract readings, units, and reference ranges into the log.
+- Medicine packaging photo recognition: photo scan of medicine strips or boxes to visually transcribe brand/generic names and strength with strict non-authenticity disclaimers.
 - Optional encrypted sync and backup file. The server only ever holds data it cannot read.
 
 **Safety**
@@ -52,11 +53,11 @@ The Smart Companion gives **three small steps at a time**, understands typing, v
 | Backend | Python 3.10+, FastAPI, Pydantic, Uvicorn |
 | Frontend | HTML, CSS and plain JavaScript in 27 numbered files (Web Speech API, Web Crypto, getUserMedia, Geolocation, localStorage) |
 | Text model | `openai/gpt-oss-20b` through the Groq API |
-| Vision model | `qwen/qwen3.8-27b` through the Groq API (photos, camera frames, scanned pages, prescriptions) |
+| Vision model | `qwen/qwen3.8-27b` through the Groq API (photos, camera frames, scanned pages, prescriptions, lab reports, packaging) |
 | Speech to text | Whisper `whisper-large-v3` through the Groq API |
 | Read-aloud fallback | gTTS (only when the device has no Hindi or Bengali voice; the text goes to Google's speech service) |
 | Local vision | YOLOv8n (Ultralytics), loaded only when first used; OpenCV for the IP camera |
-| Documents | PyMuPDF |
+| Documents | PyMuPDF, OpenCV (CLAHE contrast normalization, deskewing), Pillow |
 | Storage | Browser localStorage for personal data; SQLite on the server for the doctor directory, appointment requests and encrypted sync data |
 | Outside data | OpenStreetMap (Overpass, Nominatim), Wikipedia, Wikimedia Commons, DuckDuckGo search, Google Maps links |
 
@@ -143,7 +144,10 @@ python -m http.server 5500
 # open http://127.0.0.1:5500
 ```
 
-**Run the tests:** from `backend/`, `python -m unittest tests.test_prompts_and_system` (the model calls are mocked).
+**Run the tests:** from `backend/`:
+- `python -m unittest tests.test_prompts_and_system` (base conversational prompt tests)
+- `python -m unittest tests.test_comprehensive_medical_document_intelligence` (Medical document intelligence, prescription extraction, lab report, security & contract tests; 112 tests)
+- `python evaluation/evaluate_accuracy.py` (reproducible accuracy benchmark and CER/WER comparison across OCR/VLM routes; see [docs/MEDICAL_DOCUMENT_INTELLIGENCE.md](docs/MEDICAL_DOCUMENT_INTELLIGENCE.md))
 
 **Share a demo link (optional).** Set `SITE_DIR` to the folder that holds `index.html` so one server serves both the page and the backend, then use a free Cloudflare quick tunnel:
 
@@ -159,6 +163,7 @@ The link changes each time and works only while the laptop is on. It is meant fo
 ## 8. Privacy: what stays and what leaves the device
 
 - Chats, the Health Log, medicines, contacts and the emergency card are stored in the browser on the user's own device.
+- Uploaded prescription and medical report documents are held **100% in-memory** during processing and immediately released; zero patient documents or images are stored on the server disk.
 - Text typed or spoken to the assistant is sent to the hosted models on Groq **as written**. The project first used spaCy to hide names, places and dates, and then removed it: the model is trained mostly on Western text and missed many Indian names, so it gave false comfort and also removed harmless words such as "30 minutes". Users should not type ID numbers or full addresses into the chat.
 - Audio goes to Whisper for transcription and photos go to the vision model. Neither is stored on the server.
 - The read-aloud fallback (gTTS) sends the text it reads to Google's speech service, but only on devices that have no Hindi or Bengali voice.
