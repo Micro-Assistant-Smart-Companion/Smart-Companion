@@ -66,6 +66,8 @@ from app.nearbydoc import find_nearby_healthcare, INDIA_HEALTH_HELPLINES
 from app.doctor_directory import router as directory_router, init_db
 from app.triage import check_emergency, check_crisis, EMERGENCY_TEXT, CRISIS_TEXT
 from app.prescription import extract_prescription
+from app.medical_report import extract_medical_report
+from app.medicine_recognition import recognize_medicine_packaging
 from app.resources import get_resources
 from app.sync import router as sync_router
 
@@ -184,6 +186,18 @@ def tts(input: TTSInput):
 async def extract_prescription_endpoint(file: UploadFile = File(...)):
     data = await file.read()
     return extract_prescription(data)
+
+
+@app.post("/extract-medical-report")
+async def extract_medical_report_endpoint(file: UploadFile = File(...)):
+    data = await file.read()
+    return extract_medical_report(data)
+
+
+@app.post("/recognize-medicine-photo")
+async def recognize_medicine_photo_endpoint(file: UploadFile = File(...)):
+    data = await file.read()
+    return recognize_medicine_packaging(data)
 
 
 @app.post("/detect-objects", response_model=DetectObjectsResponse)

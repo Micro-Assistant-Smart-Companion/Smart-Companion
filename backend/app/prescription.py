@@ -4,15 +4,27 @@ import base64
 from PIL import Image
 from app.llm import client, extract_json
 from app.prompts.builder import build_system_prompt
+from app.image_preprocessing import (
+    preprocess_document,
+    DocumentValidationError,
+    DocumentProcessingError,
+    MAX_DOCUMENT_BYTES,
+)
+from app.ocr_comparison import check_tesseract_support, extract_text_tesseract
 
 VISION_MODEL = "qwen/qwen3.8-27b"
 MAX_PAGES = 3
-MAX_BYTES = 10_000_000
+MAX_BYTES = MAX_DOCUMENT_BYTES
 
 
 def _pages_as_images(data: bytes):
+    """Legacy helper: yields PIL images for PDF or image bytes.
+    Preserved for backward compatibility."""
     if data[:5] == b"%PDF-":
-        import fitz  # PyMuPDF - already used by pdfqa.py
+        try:
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
         with fitz.open(stream=data, filetype="pdf") as doc:
             for page in list(doc)[:MAX_PAGES]:
                 yield Image.open(io.BytesIO(page.get_pixmap(dpi=150).tobytes("png")))
@@ -21,8 +33,9 @@ def _pages_as_images(data: bytes):
 
 
 def _to_jpeg_b64(img: Image.Image) -> str:
+    """Legacy helper: converts to RGB, downscales to 1800x1800, and encodes to base64 JPEG."""
     img = img.convert("RGB")
-    img.thumbnail((1800, 1800))          # smaller upload, also drops photo metadata (EXIF/GPS)
+    img.thumbnail((1800, 1800))
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=88)
     return base64.b64encode(buf.getvalue()).decode()
@@ -33,6 +46,7 @@ def _clean(value, limit: int) -> str:
 
 
 def _sanitize(parsed: dict) -> dict:
+    """Sanitizes model output, enforces clinical constraints, and populates backward-compatible keys."""
     conditions, seen = [], set()
     raw_conditions = parsed.get("conditions")
     for c in raw_conditions if isinstance(raw_conditions, list) else []:
@@ -49,34 +63,76 @@ def _sanitize(parsed: dict) -> dict:
         name = _clean(m.get("name"), 80)
         if not name:
             continue
+        brand_name = _clean(m.get("brand_name"), 80)
+        generic_name = _clean(m.get("generic_name"), 80)
+        strength = _clean(m.get("strength"), 40)
+        dosage = _clean(m.get("dosage"), 40)
+        dose = _clean(m.get("dose") or strength or dosage, 40)
+        frequency = _clean(m.get("frequency"), 60)
+        duration = _clean(m.get("duration"), 40)
+        instructions = _clean(m.get("instructions"), 120)
+        notes = _clean(m.get("notes") or instructions, 120)
+        
+        confidence = _clean(m.get("confidence") or "high", 20).lower()
+        if confidence not in ("high", "medium", "low"):
+            confidence = "medium"
+        is_uncertain = bool(m.get("is_uncertain", False) or confidence == "low")
+        raw_text = _clean(m.get("raw_text"), 200)
+
         item = {
             "name": name,
-            "dose": _clean(m.get("dose"), 40),
-            "frequency": _clean(m.get("frequency"), 60),
-            "duration": _clean(m.get("duration"), 40),
-            "notes": _clean(m.get("notes"), 100),
+            "brand_name": brand_name,
+            "generic_name": generic_name,
+            "strength": strength,
+            "dosage": dosage,
+            "dose": dose,
+            "frequency": frequency,
+            "duration": duration,
+            "instructions": instructions,
+            "notes": notes,
+            "confidence": confidence,
+            "is_uncertain": is_uncertain,
+            "raw_text": raw_text,
+            "is_verified": False,
         }
-        key = (name.lower(), item["dose"].lower())
+        key = (name.lower(), dose.lower())
         if key not in seen:
             seen.add(key)
             medicines.append(item)
 
+    tess_available, _ = check_tesseract_support()
     return {
         "conditions": conditions[:10],
         "medicines": medicines[:25],
         "doctor": _clean(parsed.get("doctor"), 60),
         "date": _clean(parsed.get("date"), 30),
+        "raw_ocr_text": _clean(parsed.get("raw_ocr_text"), 2000),
+        "ocr_engine_used": VISION_MODEL,
+        "tesseract_available": tess_available,
     }
 
 
 def extract_prescription(data: bytes) -> dict:
-    if len(data) > MAX_BYTES:
-        return {"ok": False, "message": "That file is too big (maximum 10 MB). Try a smaller photo."}
+    """Preprocesses a prescription document (PDF or image) and extracts structured clinical data.
+    
+    Performs memory-only validation, orientation correction, illumination normalization (CLAHE),
+    and noise reduction before dispatching clean payloads to the vision model.
+    """
     try:
-        images = [_to_jpeg_b64(i) for i in _pages_as_images(data)]
+        prep_doc = preprocess_document(data, max_pages=MAX_PAGES)
+        images = prep_doc.all_base64
+    except DocumentValidationError as dve:
+        return {"ok": False, "message": str(dve)}
+    except DocumentProcessingError as dpe:
+        return {"ok": False, "message": str(dpe)}
     except Exception as e:
-        print(f"[prescription] could not open file: {e}")
-        return {"ok": False, "message": "I couldn't open that file. Please upload a clear photo (JPG or PNG) or a PDF."}
+        print(f"[prescription] preprocessing fallback triggered: {e}")
+        try:
+            images = [_to_jpeg_b64(i) for i in _pages_as_images(data)]
+        except Exception as inner_e:
+            print(f"[prescription] could not open file: {inner_e}")
+            return {"ok": False, "message": "I couldn't open that file. Please upload a clear photo (JPG or PNG) or a PDF."}
+
     if not images:
         return {"ok": False, "message": "That file seems to be empty."}
 
